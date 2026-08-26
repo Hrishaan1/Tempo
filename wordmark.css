@@ -1,0 +1,30 @@
+/* Tempo is an app wordmark, not a browser-default text link. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--paper);
+  text-decoration: none;
+  line-height: 1;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.brand:hover,
+.brand:focus-visible {
+  color: var(--paper);
+  text-decoration: none;
+  transform: translateY(-1px);
+  opacity: .92;
+  outline: 0;
+}
+.brand:focus-visible { box-shadow: 0 0 0 3px #c8ff3d66; border-radius: 9px; }
+.brand-mark {
+  width: 24px;
+  height: 24px;
+  margin-right: 1px;
+  border-radius: 8px 8px 8px 3px;
+  box-shadow: 3px 3px 0 var(--lilac);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+.brand-word { font-weight: 800; }
