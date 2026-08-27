@@ -1,4 +1,4 @@
-const CACHE = 'tempo-static-v4';
+const CACHE = 'tempo-static-v5';
 const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => e.waitUntil(
