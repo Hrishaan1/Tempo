@@ -3,7 +3,7 @@ self.importScripts('./firebase-config.js');
 self.importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 self.importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
-const CACHE = 'tempo-static-v4';
+const CACHE = 'tempo-static-v5';
 const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => e.waitUntil(
@@ -15,9 +15,21 @@ self.addEventListener('activate', (e) => e.waitUntil(
     .then(() => rearmFromCache())
 ));
 self.addEventListener('fetch', (e) => {
-  if (e.request.method === 'GET') {
-    e.respondWith(caches.match(e.request).then((x) => x || fetch(e.request).catch(() => caches.match('./index.html'))));
-  }
+  if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    try {
+      const fresh = await fetch(e.request);
+      if (fresh && fresh.ok) cache.put(e.request, fresh.clone()).catch(() => {});
+      return fresh;
+    } catch (err) {
+      const cached = await cache.match(e.request);
+      if (cached) return cached;
+      return e.request.mode === 'navigate' ? cache.match('./index.html') : Response.error();
+    }
+  })());
 });
 
 /* ---- scheduled offline reminders (Notification Triggers API) ---- */
