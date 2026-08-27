@@ -1,5 +1,5 @@
 (() => {'use strict';
-const STORE='tempo.schedule.v2',START=420,END=1320,DAY=86400000;
+const STORE='tempo.schedule.v3',START=420,END=1320,DAY=86400000;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const pad=n=>String(n).padStart(2,'0');
 const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
