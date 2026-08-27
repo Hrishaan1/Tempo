@@ -103,7 +103,8 @@ window.TempoFirebase = (function () {
     ref.set({
       events: app.getState().events,
       selectedDate: app.getState().selectedDate,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      tzOffset: new Date().getTimezoneOffset()
     }).catch(function (e) {
       console.warn('Tempo: cloud save failed', e);
     });
@@ -136,6 +137,7 @@ window.TempoFirebase = (function () {
   function onAuthChanged(user) {
     currentUser = user;
     stopListener();
+    if (window.TempoNotifications) window.TempoNotifications.onAuthChanged(user ? user.uid : null);
     if (user) {
       updateSyncUI();
       updateSettingsSync();

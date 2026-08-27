@@ -39,6 +39,7 @@ function save(toCloud=true){
     window._tempoLastCloudSave=Date.now();
     window.TempoFirebase.saveToCloud();
   }
+  if(window.TempoNotifications)window.TempoNotifications.scheduleUpdate();
 }
 
 function toast(m){
@@ -327,7 +328,8 @@ if(window.TempoFirebase){
   var syncMsg=$('#syncMessage');
   if(syncMsg)syncMsg.textContent='Offline mode \u2014 Tempo is saved in this browser on this device. Sign in with Google to sync across devices.';
 }
+if(window.TempoNotifications)window.TempoNotifications.init();
 
 render();
-if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register(window.TEMPO_FIREBASE_CONFIG?'./firebase-messaging-sw.js':'./service-worker.js').catch(()=>{}));
 })();

@@ -1,3 +1,8 @@
+/* Tempo service worker — static caching, offline scheduled reminders, and Firebase push (FCM). */
+self.importScripts('./firebase-config.js');
+self.importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+self.importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
 const CACHE = 'tempo-static-v4';
 const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
 
@@ -55,6 +60,7 @@ async function armTriggers() {
     const stored = r ? await r.json() : null;
     const list = (stored && stored.enabled && Array.isArray(stored.triggers)) ? stored.triggers : [];
 
+    /* drop any scheduled reminders we previously armed so edited/removed blocks don't go stale */
     const pending = await self.registration.getNotifications({ includeTriggered: false });
     const ours = pending.filter((n) => n.tag && n.tag.indexOf('tempo-') === 0);
     await Promise.all(ours.map((n) => n.close()));
@@ -84,3 +90,27 @@ self.addEventListener('notificationclick', (e) => {
     })
   );
 });
+
+/* ---- Firebase Cloud Messaging (background messages) ---- */
+
+if (self.TEMPO_FIREBASE_CONFIG && self.firebase) {
+  try {
+    firebase.initializeApp(self.TEMPO_FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+    messaging.onBackgroundMessage((payload) => {
+      const d = (payload && payload.data) || {};
+      const tag = d.tag || 'tempo-push';
+      const opts = {
+        body: d.body || '',
+        icon: d.icon || './favicon.svg',
+        badge: d.icon || './favicon.svg',
+        tag: tag,
+        renotify: true,
+        data: { url: d.url || './', id: d.id || '' }
+      };
+      return self.registration.showNotification(d.title || 'Tempo', opts);
+    });
+  } catch (err) {
+    console.warn('Tempo: FCM init in service worker failed', err);
+  }
+}

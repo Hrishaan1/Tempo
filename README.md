@@ -48,6 +48,38 @@ Tempo runs fully offline by default. To enable cross-device sync:
 
 Then, from any screen, open settings and **Continue with Google**. If both local and cloud schedules exist, Tempo asks which to keep. Changes save to Firestore in real time while `localStorage` stays as the offline cache.
 
+## Reminders (notifications)
+
+Tempo can nudge you before each time block starts. Reminders are scheduled **on your device**, so they fire even with no internet.
+
+1. Open **Settings → Remindless** and flip on **Remind me before blocks**.
+2. Allow notifications when the browser asks. (On iPhone/iPad, install the app to your home screen first — web notifications require an installed PWA.)
+3. Pick a lead time: at start, or 5 / 15 / 30 minutes before.
+
+How delivery works:
+
+- **Chromium (Android; desktop Chrome/Edge with the trigger flag)** — Tempo schedules each reminder on-device via the Notification Triggers API. It fires even when Tempo is closed and fully offline.
+- **Other browsers (incl. iOS Safari and Firefox)** — reminders appear while Tempo is open; the page checks every 20 seconds.
+- Every schedule change re-arms pending reminders, so edited or deleted blocks never fire stale alerts. Show a reminder once per block, per lead time, per day.
+
+### Firebase push — deliver reminders when Tempo is closed
+
+The offline path covers Chromium. To get the OS to deliver the nudge on every device (even with the app closed, on any supported browser), forward due reminders through Firebase Cloud Messaging:
+
+1. Firebase console → **Project settings → Cloud Messaging → Web push certificates**. Copy the *key pair* into `firebase-config.js` as `vapidKey: '...'`.
+2. Deploy the sender function (already in `functions/`) so a server can push at the right time. Scheduled triggers need the Blaze (pay-as-you-go) plan:
+   ```
+   cd functions
+   npm install
+   firebase use tempo-67a44                       # or your project id
+   firebase deploy --only functions:sendReminders
+   ```
+3. Sign in with Google in Tempo and enable reminders. Tempo stores this device's token under `users/{uid}/fcmTokens` and your prefs under `users/{uid}/notificationSettings/main`.
+4. `sendReminders` runs every 5 minutes: it compares your schedule to the current time (using the timezone saved with the schedule) and pushes to every signed-in device. To test the wiring without waiting, deploy `sendTestPush` as well and call it from the app.
+5. A one-off test is also possible from Firebase console → **Cloud Messaging → Send test message** to the device you're signed in on.
+
+Files: `notifications.js` (client engine + token management), `firebase-messaging-sw.js` (push + offline-scheduled service worker), `functions/index.js` (server sender). The existing `firestore.rules` already permits each user to read/write these new paths.
+
 ## How data flows
 
 - **Events** are time blocks with a color, repeat rule, and optional per-date overrides/exclusions.
