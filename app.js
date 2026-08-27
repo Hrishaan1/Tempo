@@ -79,11 +79,8 @@ function fmt(k,long=false){
 
 function esc(v){const s=document.createElement('span');s.textContent=v;return s.innerHTML}
 
-function buildTimes(){
-  let o='';
-  for(let n=0;n<=1440;n+=15)o+=`<option value="${n}">${minsLabel(n)}</option>`;
-  $('#startTime').innerHTML=o;$('#endTime').innerHTML=o;
-}
+const minToHM=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
+const hmToMin=v=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(v||'').trim());return m?(+m[1]%24)*60+ +m[2]:NaN};
 
 let daysWindow=null;
 const DAYS_SPAN=17;
@@ -188,12 +185,12 @@ function openComposer(e=null,dateForEdit=null){
     $('#taskName').value=e.title;
     if(dateForEdit&&e.overrides&&e.overrides[dateForEdit]){
       const o=e.overrides[dateForEdit];
-      $('#startTime').value=o.start??e.start;
-      $('#endTime').value=o.end??e.end;
+      $('#startTime').value=minToHM(o.start??e.start);
+      $('#endTime').value=minToHM(o.end??e.end);
       color(o.color??e.color);
     }else{
-      $('#startTime').value=e.start;
-      $('#endTime').value=e.end;
+      $('#startTime').value=minToHM(e.start);
+      $('#endTime').value=minToHM(e.end);
       color(e.color);
     }
     $('#repeatRule').value=e.repeat;
@@ -243,12 +240,10 @@ async function importData(f){
   }catch{toast("That isn't a valid Tempo backup.");}finally{$('#importFile').value=''}
 }
 
-buildTimes();
 for(let h=START;h<=END;h+=60){
   $('#timeLabels').insertAdjacentHTML('beforeend',`<span>${minsLabel(h).replace(':00','')}</span>`);
   $('#hourLines').insertAdjacentHTML('beforeend','<i></i>');
 }
-$('#startTime').value=960;$('#endTime').value=1020;
 $('#planButton').onclick=()=>openComposer();
 $('#planButtonAside').onclick=()=>openComposer();
 $('.inline-add').onclick=()=>openComposer();
@@ -260,9 +255,9 @@ $('#colors').onclick=e=>{const b=e.target.closest('[data-color]');if(b)color(b.d
 
 $('#taskForm').onsubmit=e=>{
   e.preventDefault();
-  const title=$('#taskName').value.trim(),start=+$('#startTime').value,end=+$('#endTime').value,err=$('#formError');
+  const title=$('#taskName').value.trim(),start=hmToMin($('#startTime').value),end=hmToMin($('#endTime').value),err=$('#formError');
   if(!title){err.textContent='Add a task name first.';$('#taskName').focus();return}
-  if(end<=start){err.textContent='Your end time needs to be after the start time.';$('#endTime').focus();return}
+  if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start){err.textContent='Your end time needs to be after the start time.';(Number.isInteger(start)?$('#endTime'):$('#startTime')).focus();return}
   const id=$('#editId').value,old=state.events.find(e=>e.id===id);
   if(old&&editDate&&old.repeat!=='once'){
     if(!old.overrides)old.overrides={};

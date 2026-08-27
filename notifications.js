@@ -19,7 +19,6 @@ window.TempoNotifications = (function () {
   var settings = loadSettings();
   var messaging = null;
   var currentUid = null;
-  var tokenSaved = false;
   var debounce = null;
 
   function loadSettings() {
@@ -206,24 +205,23 @@ window.TempoNotifications = (function () {
       return;
     }
     var vapid = (window.TEMPO_FIREBASE_CONFIG && window.TEMPO_FIREBASE_CONFIG.vapidKey) || '';
-    if (!vapid) { tokenSaved = false; renderUI(); return; }
+    if (!vapid) { renderUI(); return; }
     getTokenReg().then(function (token) {
-      if (!token) { tokenSaved = false; renderUI(); return; }
+      if (!token) { renderUI(); return; }
       ref.set({ fcmTokens: { [token]: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true })
-        .then(function () { tokenSaved = true; renderUI(); })
-        .catch(function () { tokenSaved = false; renderUI(); });
-    }).catch(function () { tokenSaved = false; renderUI(); });
+        .then(renderUI)
+        .catch(renderUI);
+    }).catch(renderUI);
   }
 
   function removeFcmToken(ref) {
     if (!messaging) return;
     var vapid = (window.TEMPO_FIREBASE_CONFIG || {}).vapidKey || '';
-    if (!vapid) { tokenSaved = false; return; }
+    if (!vapid) return;
     getTokenReg().then(function (token) {
       if (!token) return;
       ref.update({ ['fcmTokens.' + token]: firebase.firestore.FieldValue.delete() }).catch(function () {});
     }).catch(function () {});
-    tokenSaved = false;
   }
 
   /* ---- settings UI ---- */
@@ -231,37 +229,11 @@ window.TempoNotifications = (function () {
   function renderUI() {
     var sw = document.getElementById('notifySwitch');
     var opts = document.getElementById('notifyOptions');
-    var status = document.getElementById('notifyStatus');
     if (sw) {
       sw.checked = !!settings.enabled;
       sw.disabled = typeof Notification === 'undefined';
     }
     if (opts) opts.hidden = !settings.enabled;
-    if (!status) return;
-    var msg;
-    if (typeof Notification === 'undefined') {
-      msg = 'Notifications aren\u2019t supported in this browser.';
-    } else if (!settings.enabled) {
-      msg = 'Off \u2014 no nudges.';
-    } else if (Notification.permission === 'denied') {
-      msg = 'Blocked \u2014 allow notifications for this site in your browser settings.';
-    } else if (Notification.permission !== 'granted') {
-      msg = 'Turn it on to allow the prompt.';
-    } else {
-      msg = settings.lead === 0
-        ? 'A nudge as each block starts.'
-        : 'A heads-up ' + settings.lead + ' min before each block.';
-      if (supportsTriggers()) msg += ' Scheduled on this device, and it works offline.';
-      else if (!swHandlesReminders()) msg += ' Shown while Tempo is open.';
-      if (currentUid) msg += tokenSaved
-        ? ' Push is on for this device.'
-        : (window.TEMPO_FIREBASE_CONFIG && !window.TEMPO_FIREBASE_CONFIG.vapidKey
-          ? ' Add the Web push VAPID key to firebase-config.js to enable push.'
-          : ' Push not registered.');
-      else if (window.TEMPO_FIREBASE_CONFIG)
-        msg += ' Sign in with Google to also nudge you when Tempo is closed.';
-    }
-    status.textContent = msg;
   }
 
   function requestPermission() {
@@ -340,7 +312,6 @@ window.TempoNotifications = (function () {
 
   function onAuthChanged(uid) {
     currentUid = uid || null;
-    tokenSaved = false;
     if (uid) tokenMaintenance();
     else renderUI();
   }
