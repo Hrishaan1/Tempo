@@ -27,13 +27,11 @@ window.TempoFirebase = (function () {
     var ref = db.collection('users').doc(currentUser.uid).collection('schedule').doc('main');
     ref.get().then(function (snap) {
       if (!snap.exists) {
-        if (window.TempoApp) window.TempoApp.toast('No cloud backup found. Your local schedule is up to date.');
         if (onDone) onDone();
         return;
       }
       var cloud = snap.data();
       if (!Array.isArray(cloud.events) || !cloud.events.length) {
-        if (window.TempoApp) window.TempoApp.toast('Cloud schedule is empty. Your local schedule is up to date.');
         if (onDone) onDone();
         return;
       }

@@ -84,13 +84,32 @@ function buildTimes(){
   $('#startTime').innerHTML=o;$('#endTime').innerHTML=o;
 }
 
+let daysWindow=null;
+const DAYS_SPAN=17;
+
 function renderDays(){
-  const center=parseDate(state.selectedDate);
-  $('#days').innerHTML=[-2,-1,0,1,2].map(i=>{
-    const d=new Date(center.getTime()+i*DAY),k=dateKey(d),yes=k===state.selectedDate;
+  const sel=state.selectedDate;
+  const prevIdx=daysWindow?daysWindow.indexOf(sel):-1;
+  const base=parseDate(sel).getTime();
+  daysWindow=[];
+  for(let i=-2;i<DAYS_SPAN-2;i++)daysWindow.push(dateKey(new Date(base+i*DAY)));
+  const track=document.createElement('div');
+  track.className='days-track';
+  track.innerHTML=daysWindow.map(k=>{
+    const d=parseDate(k),yes=k===sel;
     return`<button data-date="${k}" class="${yes?'selected':''}" ${yes?'aria-current="date"':''}><span>${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><b>${d.getDate()}</b></button>`;
   }).join('');
-  $('#dateLabel').textContent=fmt(state.selectedDate,true).toUpperCase();
+  const nav=$('#days');
+  nav.innerHTML='';nav.append(track);
+  const step=(track.children[0]?.clientWidth||0)+6,to=0,from=prevIdx>=0?step*(prevIdx-2):0;
+  track.style.transition='none';
+  track.style.transform=`translateX(${from}px)`;
+  if(prevIdx>=0&&prevIdx!==2){
+    void track.getBoundingClientRect();
+    track.style.transition='transform .45s cubic-bezier(.22,1,.36,1)';
+    track.style.transform=`translateX(${to}px)`;
+  }
+  $('#dateLabel').textContent=fmt(sel,true).toUpperCase();
 }
 
 function renderTimeline(){
@@ -230,6 +249,7 @@ for(let h=START;h<=END;h+=60){
 }
 $('#startTime').value=960;$('#endTime').value=1020;
 $('#planButton').onclick=()=>openComposer();
+$('#planButtonAside').onclick=()=>openComposer();
 $('.inline-add').onclick=()=>openComposer();
 $('#previousDay').onclick=()=>{state.selectedDate=dateKey(new Date(parseDate(state.selectedDate)-DAY));save();render()};
 $('#nextDay').onclick=()=>{state.selectedDate=dateKey(new Date(parseDate(state.selectedDate).getTime()+DAY));save();render()};
