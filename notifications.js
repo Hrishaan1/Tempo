@@ -256,7 +256,6 @@ window.TempoNotifications = (function () {
       else {
         var sw = document.getElementById('notifySwitch');
         if (sw) sw.checked = false;
-        if (window.TempoApp && r !== 'granted') { /* keep silent when user just closed the prompt */ }
       }
       renderUI();
       syncTriggers();

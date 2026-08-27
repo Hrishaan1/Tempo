@@ -65,7 +65,6 @@ window.TempoFirebase = (function () {
         ? cloud.selectedDate : app.todayKey());
       app.save(false);
       app.render();
-      app.toast('Loaded ' + parsed.length + ' blocks from cloud.');
       updateSyncUI();
       updateSettingsSync();
       app.close();

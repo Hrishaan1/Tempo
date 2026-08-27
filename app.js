@@ -34,7 +34,7 @@ function load(){
 let state=load(),activeEvent=null,returnFocus=null,editDate=null;
 
 function save(toCloud=true){
-  try{localStorage.setItem(STORE,JSON.stringify(state))}catch{toast("Couldn't save locally. Check browser storage settings.")}
+  try{localStorage.setItem(STORE,JSON.stringify(state))}catch{console.log("Couldn't save locally. Check browser storage settings.")}
   if(toCloud&&window.TempoFirebase&&window.TempoFirebase.ready()){
     window._tempoLastCloudSave=Date.now();
     window.TempoFirebase.saveToCloud();
@@ -218,14 +218,14 @@ function demo(){
     {id:uid(),title:'PSAT prep',date:d,start:1035,end:1095,color:'lilac',repeat:'weekdays',excludedDates:[],overrides:{}},
     {id:uid(),title:'Dinner + reset',date:d,start:1110,end:1140,color:'aqua',repeat:'daily',excludedDates:[],overrides:{}}
   ];
-  state.selectedDate=d;save();render();close();toast('Demo schedule loaded.');
+  state.selectedDate=d;save();render();close();console.log('Demo schedule loaded.');
 }
 
 function exportData(){
   const a=document.createElement('a');
   const b=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});
   a.href=URL.createObjectURL(b);a.download=`tempo-schedule-${todayKey()}.json`;a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Schedule exported.');
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);console.log('Schedule exported.');
 }
 
 async function importData(f){
@@ -236,8 +236,8 @@ async function importData(f){
       events:d.events.map(e=>({...e,excludedDates:Array.isArray(e.excludedDates)?e.excludedDates:[],overrides:e.overrides||{}})),
       selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(d.selectedDate||'')?d.selectedDate:todayKey()
     };
-    save();render();close();toast(`Imported ${state.events.length} blocks.`);
-  }catch{toast("That isn't a valid Tempo backup.");}finally{$('#importFile').value=''}
+    save();render();close();console.log(`Imported ${state.events.length} blocks.`);
+  }catch{console.log("That isn't a valid Tempo backup.");}finally{$('#importFile').value=''}
 }
 
 for(let h=START;h<=END;h+=60){
@@ -267,7 +267,7 @@ $('#taskForm').onsubmit=e=>{
   }else{
     state.events.push({id:uid(),title,date:state.selectedDate,start,end,color:$('.chip.active').dataset.color,repeat:$('#repeatRule').value,excludedDates:[],overrides:{}});
   }
-  save();render();close();toast(id?'Plan updated.':'Added to your day.');
+  save();render();close();console.log(id?'Plan updated.':'Added to your day.');
 };
 
 $('#editOccurrence').onclick=()=>{close();setTimeout(()=>openComposer(activeEvent,activeEvent?.occurrenceDate),280)};
@@ -309,7 +309,7 @@ $('#importFile').onchange=e=>e.target.files[0]&&importData(e.target.files[0]);
 $('#demoButton').onclick=demo;
 $('#clearButton').onclick=()=>{
   if(confirm('Clear every Tempo task from this device? This cannot be undone.')){
-    state={events:[],selectedDate:todayKey()};save();render();close();toast('Schedule cleared.');
+    state={events:[],selectedDate:todayKey()};save();render();close();console.log('Schedule cleared.');
   }
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
