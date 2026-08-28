@@ -1,6 +1,20 @@
 (() => {'use strict';
 const STORE='tempo.schedule.v3',START=420,END=1320,DAY=86400000;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const GREETINGS=[
+  ['Make time','feel possible.'],
+  ['Less rush,','more room.'],
+  ['Steal back',"your day."],
+  ['One block','at a time.'],
+  ['Slow down,','on purpose.'],
+  ['Find the','breathing room.'],
+  ['Make room','for what matters.'],
+  ['Your time,','in your hands.'],
+  ['Take it','one thing at a time.'],
+  ['Protect','your peace.'],
+  ['Give the day','a little air.'],
+  ['Small blocks,','bigger calm.']
+];
 const pad=n=>String(n).padStart(2,'0');
 const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const parseDate=k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d,12)};
@@ -325,6 +339,10 @@ if(window.TempoFirebase){
 }
 if(window.TempoNotifications)window.TempoNotifications.init();
 
+(function shuffleGreeting(){
+  const [a,b]=GREETINGS[Math.floor(Math.random()*GREETINGS.length)];
+  $('#greeting').innerHTML=`${a}<br><em>${b}</em>`;
+})();
 render();
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register(window.TEMPO_FIREBASE_CONFIG?'./firebase-messaging-sw.js':'./service-worker.js').catch(()=>{}));
 })();
