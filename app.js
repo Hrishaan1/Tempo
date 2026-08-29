@@ -1,5 +1,5 @@
 (() => {'use strict';
-const STORE='tempo.schedule.v3',START=420,END=1320,DAY=86400000;
+const STORE='tempo.schedule.v4',START=420,END=1320,DAY=86400000;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const GREETINGS=[
   ['Make time','feel possible.'],
@@ -22,6 +22,12 @@ const todayKey=()=>dateKey(new Date());
 const uid=()=>crypto?.randomUUID?.()||`tempo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const minsLabel=n=>{const h=Math.floor(n/60),m=n%60;return`${h%12||12}:${pad(m)} ${h>=12?'PM':'AM'}`};
 const durationLabel=m=>`${Math.floor(m/60)}h ${m%60}m`;
+const TODO_META={
+  peach:{label:'Homework',mins:60},
+  lilac:{label:'Study',mins:60},
+  aqua:{label:'Reset',mins:30},
+  lime:{label:'Activity',mins:45}
+};
 
 function validEvent(e){
   if(!e||typeof e.id!=='string'||typeof e.title!=='string')return false;
@@ -35,17 +41,26 @@ function validEvent(e){
   return true;
 }
 
+function validTodo(t){
+  if(!t||typeof t.id!=='string'||typeof t.title!=='string')return false;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(t.date))return false;
+  if(!['peach','lilac','aqua','lime'].includes(t.color))return false;
+  if(!Number.isInteger(t.mins)||t.mins<5||t.mins>720)return false;
+  return true;
+}
+
 function load(){
   try{
     const x=JSON.parse(localStorage.getItem(STORE)||'{}');
     return{
       events:Array.isArray(x.events)?x.events.filter(validEvent):[],
+      todos:Array.isArray(x.todos)?x.todos.filter(validTodo):[],
       selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(x.selectedDate||'')?x.selectedDate:todayKey()
     };
-  }catch{return{events:[],selectedDate:todayKey()}}
+  }catch{return{events:[],todos:[],selectedDate:todayKey()}}
 }
 
-let state=load(),activeEvent=null,returnFocus=null,editDate=null;
+let state=load(),activeEvent=null,returnFocus=null,editDate=null,activeType='peach',composerTouched=false;
 
 function save(toCloud=true){
   try{localStorage.setItem(STORE,JSON.stringify(state))}catch{console.log("Couldn't save locally. Check browser storage settings.")}
@@ -83,6 +98,62 @@ function eventList(k){
     }
     return e;
   }).sort((a,b)=>a.start-b.start||a.end-b.end);
+}
+
+function dayGaps(k){
+  const iv=eventList(k).map(e=>[e.start,e.end]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const gaps=[];let cur=START;
+  for(const[s,e]of iv){
+    if(s>cur)gaps.push([cur,Math.min(s,END)]);
+    cur=Math.max(cur,e);
+  }
+  if(cur<END)gaps.push([cur,END]);
+  return gaps.filter(([s,e])=>e-s>=15);
+}
+
+function shortTitle(t){t=t.trim();return t.length>20?t.slice(0,19)+'\u2026':t}
+
+function slotContext(k,c){
+  const evs=eventList(k);let before=null,after=null;
+  for(const e of evs){if(e.end<=c.start)before=e;if(e.start>=c.end&&!after)after=e}
+  if(before&&after)return `after ${shortTitle(before.title)}`;
+  if(before)return `after ${shortTitle(before.title)}`;
+  if(after)return `before ${shortTitle(after.title)}`;
+  return c.start<=START?'from the first break':'an open stretch';
+}
+
+function suggestSlots(k,mins,limit=3){
+  const grid=15,out=[];
+  let cands=[];
+  const fits=dayGaps(k).filter(([s,e])=>e-s>=mins);
+  for(const[gs,ge]of fits){
+    let s=gs;if(s%grid)s+=grid-(s%grid);
+    while(s+mins<=ge){cands.push({start:s,end:s+mins,gap:[gs,ge]});s+=grid}
+  }
+  if(!cands.length){
+    const big=dayGaps(k).sort((a,b)=>(b[1]-b[0])-(a[1]-a[0]))[0];
+    if(big)cands.push({start:big[0],end:big[1],gap:big,partial:true});
+  }
+  cands=cands.filter(c=>c.end-c.start>0).sort((a,b)=>a.start-b.start);
+  const isToday=k===todayKey(),n=new Date().getHours()*60+new Date().getMinutes();
+  const rank=(c)=>isToday&&c.start<n?1:0;
+  cands.sort((a,b)=>rank(a)-rank(b)||a.start-b.start);
+  const seen=new Set();
+  for(const c of cands){if(seen.has(c.start))continue;seen.add(c.start);out.push(c);if(out.length>=limit)break}
+  return out;
+}
+
+function bestSlot(k,mins){return suggestSlots(k,mins,1)[0]||null}
+
+function scheduleTodo(t,slot=null){
+  const src=state.todos.find(x=>x.id===t.id);if(!src)return;
+  if(!slot)slot=bestSlot(src.date,src.mins);
+  if(!slot){toast('No open spot today to fit this in \u2014 free up some time first.');return}
+  const s=slot.start,e=Math.min(s+src.mins,slot.end);
+  state.events.push({id:uid(),title:src.title,date:src.date,start:s,end:e,color:src.color,repeat:'once',excludedDates:[],overrides:{}});
+  state.todos=state.todos.filter(x=>x.id!==src.id);
+  save();render();
+  toast(`Scheduled \u201c${shortTitle(src.title)}\u201d for ${minsLabel(s)} \u2013 ${minsLabel(e)}.`);
 }
 
 function fmt(k,long=false){
@@ -169,7 +240,23 @@ function renderStats(){
   $('#barChart').innerHTML=bars;
 }
 
-function render(){renderDays();renderTimeline();renderStats()}
+function renderTodos(){
+  const k=state.selectedDate,list=state.todos.filter(t=>t.date===k);
+  $('#todoCount').textContent=list.length?`${list.length} left`:'All set';
+  const el=$('#todoList');el.innerHTML='';
+  if(!list.length){
+    el.innerHTML='<li class="todo-empty">Nothing on your plate \u2014 type one above and find it a home.</li>';
+  }else list.forEach(t=>{
+    const s=bestSlot(k,t.mins),li=document.createElement('li');
+    const go=s?`<button class="todo-go" title="Schedule at ${esc(minsLabel(s.start))}">\u2192</button>`:'';
+    li.className='todo-item';li.dataset.id=t.id;
+    li.innerHTML=`<span class="todo-dot ${t.color}"></span><button class="todo-main"><b>${esc(t.title)}</b><small>${s?`${minsLabel(s.start)} \u2013 ${minsLabel(s.end)}`:'No open spot today'}${s&&slotContext(k,s)?` \u00b7 ${esc(slotContext(k,s))}`:''}</small></button>${go}<button class="todo-x" title="Remove from list"><span>\u00d7</span></button>`;
+    el.append(li);
+  });
+  updateTodoSuggest();
+}
+
+function render(){renderDays();renderTimeline();renderStats();renderTodos()}
 
 function show(id,trigger){
   returnFocus=trigger||document.activeElement;
@@ -188,8 +275,18 @@ function close(){
 
 function color(c){$$('.chip').forEach(b=>b.classList.toggle('active',b.dataset.color===c))}
 
+function setComposerTime(s){$('#startTime').value=minToHM(s.start);$('#endTime').value=minToHM(s.end)}
+
+function updateComposerSlots(prefill=true){
+  const c=$('.chip.active')?.dataset.color||'peach';
+  const slots=suggestSlots(state.selectedDate,TODO_META[c].mins,3);
+  if(prefill&&!composerTouched&&slots[0])setComposerTime(slots[0]);
+  $('#composerSlots').innerHTML=slots.map((s,i)=>`<button type="button" class="composer-slot" data-s="${s.start}" data-e="${s.end}"><b>${i===0?'Best fit \u2014 ':''}${minsLabel(s.start)} \u2013 ${minsLabel(s.end)}</b><small>${slotContext(state.selectedDate,s)}${s.partial?' \u00b7 small gap':''}</small></button>`).join('');
+}
+
 function openComposer(e=null,dateForEdit=null){
   editDate=dateForEdit;
+  composerTouched=false;
   $('#taskForm').reset();$('#formError').textContent='';$('#editId').value='';
   $('#composerTitle').textContent='Plan time';
   $('#saveButton').innerHTML='Add to my day <span>\u2192</span>';
@@ -211,6 +308,8 @@ function openComposer(e=null,dateForEdit=null){
     $('#composerTitle').textContent='Edit this day';
     $('#saveButton').innerHTML='Save changes <span>\u2192</span>';
   }
+  $('#composerSlots').hidden=!!e;
+  if(!e)updateComposerSlots(true);
   show('composer',$('#planButton'));
 }
 
@@ -232,6 +331,10 @@ function demo(){
     {id:uid(),title:'PSAT prep',date:d,start:1035,end:1095,color:'lilac',repeat:'weekdays',excludedDates:[],overrides:{}},
     {id:uid(),title:'Dinner + reset',date:d,start:1110,end:1140,color:'aqua',repeat:'daily',excludedDates:[],overrides:{}}
   ];
+  state.todos=[
+    {id:uid(),title:'Finish English essay',date:d,color:'peach',mins:60},
+    {id:uid(),title:'Call Nana',date:d,color:'aqua',mins:30}
+  ];
   state.selectedDate=d;save();render();close();console.log('Demo schedule loaded.');
 }
 
@@ -248,6 +351,7 @@ async function importData(f){
     if(!d||!Array.isArray(d.events)||d.events.some(e=>!validEvent(e)))throw 0;
     state={
       events:d.events.map(e=>({...e,excludedDates:Array.isArray(e.excludedDates)?e.excludedDates:[],overrides:e.overrides||{}})),
+      todos:Array.isArray(d.todos)?d.todos.filter(validTodo):[],
       selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(d.selectedDate||'')?d.selectedDate:todayKey()
     };
     save();render();close();console.log(`Imported ${state.events.length} blocks.`);
@@ -265,7 +369,65 @@ $('#previousDay').onclick=()=>{state.selectedDate=dateKey(new Date(parseDate(sta
 $('#nextDay').onclick=()=>{state.selectedDate=dateKey(new Date(parseDate(state.selectedDate).getTime()+DAY));save();render()};
 $('#todayButton').onclick=()=>{state.selectedDate=todayKey();save();render()};
 $('#days').onclick=e=>{const b=e.target.closest('[data-date]');if(b){state.selectedDate=b.dataset.date;save();render()}};
-$('#colors').onclick=e=>{const b=e.target.closest('[data-color]');if(b)color(b.dataset.color)};
+$('#colors').onclick=e=>{const b=e.target.closest('[data-color]');if(b){color(b.dataset.color);if(!$('#editId').value)updateComposerSlots(true)}};
+$('#startTime').addEventListener('input',()=>composerTouched=true);
+$('#endTime').addEventListener('input',()=>composerTouched=true);
+$('#composerSlots').onclick=e=>{
+  const b=e.target.closest('.composer-slot');if(!b)return;
+  setComposerTime({start:+b.dataset.s,end:+b.dataset.e});
+  composerTouched=true;
+  $$('#composerSlots .composer-slot').forEach(x=>x.classList.toggle('active',x===b));
+};
+
+function updateTodoSuggest(){
+  const v=$('#todoInput').value.trim(),box=$('#todoSuggest');
+  if(!v){box.hidden=true;return}
+  box.hidden=false;
+  const slots=suggestSlots(state.selectedDate,TODO_META[activeType].mins,3),fit=$('#todoFitText');
+  if(!slots.length){
+    fit.innerHTML='<b>No open spot</b> on this day\u2019s schedule \u2014 free something up first.';
+    $('#todoSlots').innerHTML='';return;
+  }
+  const b=slots[0];
+  fit.innerHTML=`Best fit \u2014 <b>${minsLabel(b.start)} \u2013 ${minsLabel(b.end)}</b>${b.partial?' <em>(small gap)</em>':''}${` \u00b7 ${esc(slotContext(state.selectedDate,b))}`}`;
+  $('#todoSlots').innerHTML=slots.map((s,i)=>`<button type="button" class="t-slot" data-s="${s.start}" data-e="${s.end}" title="Schedule ${esc(TODO_META[activeType].label)} here">${i===0?'Schedule ':'or '}<b>${minsLabel(s.start)}</b></button>`).join('');
+}
+
+function addTodo(fromSchedule=false){
+  const v=$('#todoInput').value.trim();if(!v){$('#todoInput').focus();return}
+  const t={id:uid(),title:v,color:activeType,mins:TODO_META[activeType].mins,date:state.selectedDate};
+  state.todos.push(t);
+  $('#todoInput').value='';
+  if(fromSchedule){const slot=bestSlot(t.date,t.mins);if(slot)return scheduleTodo(t,slot)}
+  save();render();
+  toast('Added to your to-do list \u2014 I\u2019ll find it a spot.');
+}
+$('#todoForm').onsubmit=e=>{e.preventDefault();addTodo(false)};
+$('#todoTypes').onclick=e=>{
+  const b=e.target.closest('.tchip');if(!b)return;
+  activeType=b.dataset.color;
+  $('#todoForm').dataset.type=activeType;
+  $$('#todoTypes .tchip').forEach(c=>c.classList.toggle('active',c===b));
+  updateTodoSuggest();
+};
+$('#todoInput').addEventListener('input',updateTodoSuggest);
+$('#todoSlots').onclick=e=>{
+  const b=e.target.closest('.t-slot');if(!b)return;
+  const t={id:uid(),title:$('#todoInput').value.trim(),color:activeType,mins:TODO_META[activeType].mins,date:state.selectedDate};
+  if(!t.title){$('#todoInput').focus();return}
+  state.todos.push(t);$('#todoInput').value='';
+  scheduleTodo(t,{start:+b.dataset.s,end:+b.dataset.e});
+};
+$('#todoList').onclick=e=>{
+  const li=e.target.closest('.todo-item');if(!li)return;
+  const t=state.todos.find(x=>x.id===li.dataset.id);if(!t)return;
+  if(e.target.closest('.todo-x')){
+    state.todos=state.todos.filter(x=>x.id!==t.id);
+    save();render();return;
+  }
+  if(e.target.closest('.todo-go')||e.target.closest('.todo-main'))scheduleTodo(t);
+};
+$('#todoForm').dataset.type=activeType;
 
 $('#taskForm').onsubmit=e=>{
   e.preventDefault();
@@ -323,12 +485,12 @@ $('#importFile').onchange=e=>e.target.files[0]&&importData(e.target.files[0]);
 $('#demoButton').onclick=demo;
 $('#clearButton').onclick=()=>{
   if(confirm('Clear every Tempo task from this device? This cannot be undone.')){
-    state={events:[],selectedDate:todayKey()};save();render();close();console.log('Schedule cleared.');
+    state={events:[],todos:[],selectedDate:todayKey()};save();render();close();console.log('Schedule cleared.');
   }
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 
-window.TempoApp={validEvent:validEvent,getState:()=>state,setEvents:function(events){state.events=events},setSelectedDate:function(d){state.selectedDate=d},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey};
+window.TempoApp={validEvent:validEvent,validTodo:validTodo,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setSelectedDate:function(d){state.selectedDate=d},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos};
 
 if(window.TempoFirebase){
   window.TempoFirebase.init();

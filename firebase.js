@@ -55,12 +55,14 @@ window.TempoFirebase = (function () {
     var google = document.getElementById('googleButton');
     title.textContent = 'Merge schedule';
     msg.textContent = 'You have a cloud backup (' + cloud.events.length +
-      ' blocks) and local data on this device. Which would you like to use?';
+      ' blocks' + (Array.isArray(cloud.todos) && cloud.todos.length ? ' + ' + cloud.todos.length + ' to-dos' : '') +
+      ') and local data on this device. Which would you like to use?';
     google.hidden = false;
     google.textContent = 'Use cloud schedule';
     google.onclick = function () {
       var parsed = cloud.events.filter(app.validEvent);
       app.setEvents(parsed);
+      if (Array.isArray(cloud.todos)) app.setTodos(cloud.todos.filter(app.validTodo));
       app.setSelectedDate(/^\d{4}-\d{2}-\d{2}$/.test(cloud.selectedDate || '')
         ? cloud.selectedDate : app.todayKey());
       app.save(false);
@@ -101,6 +103,7 @@ window.TempoFirebase = (function () {
     var ref = db.collection('users').doc(currentUser.uid).collection('schedule').doc('main');
     ref.set({
       events: app.getState().events,
+      todos: app.getState().todos || [],
       selectedDate: app.getState().selectedDate,
       updatedAt: new Date().toISOString(),
       tzOffset: new Date().getTimezoneOffset()
@@ -122,6 +125,7 @@ window.TempoFirebase = (function () {
       var app = window.TempoApp;
       if (!app) return;
       app.setEvents(data.events.filter(app.validEvent));
+      if (Array.isArray(data.todos)) app.setTodos(data.todos.filter(app.validTodo));
       if (/^\d{4}-\d{2}-\d{2}$/.test(data.selectedDate || '')) app.setSelectedDate(data.selectedDate);
       app.render();
     }, function (e) {
