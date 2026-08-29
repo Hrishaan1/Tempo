@@ -147,13 +147,29 @@ function bestSlot(k,mins){return suggestSlots(k,mins,1)[0]||null}
 
 function scheduleTodo(t,slot=null){
   const src=state.todos.find(x=>x.id===t.id);if(!src)return;
+  if(src.scheduled&&src.eventId&&state.events.some(e=>e.id===src.eventId)){toast('Already scheduled \u2014 check it off when it\u2019s done.');return}
   if(!slot)slot=bestSlot(src.date,src.mins);
   if(!slot){toast('No open spot today to fit this in \u2014 free up some time first.');return}
   const s=slot.start,e=Math.min(s+src.mins,slot.end);
-  state.events.push({id:uid(),title:src.title,date:src.date,start:s,end:e,color:src.color,repeat:'once',excludedDates:[],overrides:{}});
-  state.todos=state.todos.filter(x=>x.id!==src.id);
+  const ev={id:uid(),todoId:src.id,title:src.title,date:src.date,start:s,end:e,color:src.color,repeat:'once',excludedDates:[],overrides:{}};
+  state.events.push(ev);
+  src.scheduled=true;src.eventId=ev.id;
   save();render();
   toast(`Scheduled \u201c${shortTitle(src.title)}\u201d for ${minsLabel(s)} \u2013 ${minsLabel(e)}.`);
+}
+
+function todoDone(t){return !!(t&&t.done)}
+
+function toggleTodoDone(id){
+  const t=state.todos.find(x=>x.id===id);if(!t)return;
+  t.done=!t.done;
+  save();render();
+  if(t.done)toast(`Checked off \u201c${shortTitle(t.title)}\u201d \u2014 nice work.`);
+}
+
+function releaseTodoForEvent(id){
+  const t=state.todos.find(x=>x.eventId===id);
+  if(t){delete t.scheduled;delete t.eventId;delete t.done}
 }
 
 function fmt(k,long=false){
@@ -212,7 +228,7 @@ function renderTimeline(){
     const b=document.createElement('button');
     const top=(s-START)/(END-START)*100;
     const h=Math.max(2.8,(en-s)/(END-START)*100);
-    b.className=`event ${e.color}`;
+    b.className=`event ${e.color}${e.todoId&&todoDone(state.todos.find(x=>x.id===e.todoId))?' done':''}`;
     b.style.cssText=`top:${top}%;height:${h}%;left:calc(${e.c/max*100}% + 5px);width:calc(${100/max}% - 7px);animation-delay:${i*45}ms`;
     b.innerHTML=`<b>${esc(e.title)}${e.repeat!=='once'?' <em>\u21bb</em>':''}</b><small>${minsLabel(e.start)} \u2013 ${minsLabel(e.end)}</small>`;
     b.onclick=()=>openDetail({...e,occurrenceDate:state.selectedDate});
@@ -242,21 +258,53 @@ function renderStats(){
 
 function renderTodos(){
   const k=state.selectedDate,list=state.todos.filter(t=>t.date===k);
-  $('#todoCount').textContent=list.length?`${list.length} left`:'All set';
+  const pending=list.filter(t=>!todoDone(t)).length;
+  $('#todoCount').textContent=list.length?`${pending} left`:'All set';
   const el=$('#todoList');el.innerHTML='';
   if(!list.length){
     el.innerHTML='<li class="todo-empty">Nothing on your plate \u2014 type one above and find it a home.</li>';
   }else list.forEach(t=>{
-    const s=bestSlot(k,t.mins),li=document.createElement('li');
-    const go=s?`<button class="todo-go" title="Schedule at ${esc(minsLabel(s.start))}">\u2192</button>`:'';
-    li.className='todo-item';li.dataset.id=t.id;
-    li.innerHTML=`<span class="todo-dot ${t.color}"></span><button class="todo-main"><b>${esc(t.title)}</b><small>${s?`${minsLabel(s.start)} \u2013 ${minsLabel(s.end)}`:'No open spot today'}${s&&slotContext(k,s)?` \u00b7 ${esc(slotContext(k,s))}`:''}</small></button>${go}<button class="todo-x" title="Remove from list"><span>\u00d7</span></button>`;
+    const li=document.createElement('li');
+    const go=t.scheduled?'':`<button class="todo-go" title="Schedule at ${esc(bestSlot(k,t.mins)?minsLabel(bestSlot(k,t.mins).start):'')}">\u2192</button>`;
+    li.className='todo-item'+(t.scheduled?' scheduled':'')+(todoDone(t)?' done':'');
+    let small;
+    if(t.scheduled){
+      const ev=state.events.find(e=>e.id===t.eventId);
+      small=ev?`${minsLabel(ev.start)} \u2013 ${minsLabel(ev.end)} \u00b7 done`:'Scheduled';
+    }else{
+      const s=bestSlot(k,t.mins);
+      small=s?`${minsLabel(s.start)} \u2013 ${minsLabel(s.end)}${slotContext(k,s)?` \u00b7 ${esc(slotContext(k,s))}`:''}`:'No open spot today';
+    }
+    li.dataset.id=t.id;
+    li.innerHTML=`<span class="todo-dot ${t.color}"></span><button class="todo-main"><b>${esc(t.title)}</b><small>${esc(small)}</small></button>${go}<button class="todo-x" title="Remove from list"><span>\u00d7</span></button>`;
     el.append(li);
   });
   updateTodoSuggest();
 }
 
-function render(){renderDays();renderTimeline();renderStats();renderTodos()}
+function renderTodoMenu(){
+  const k=state.selectedDate,list=state.todos.filter(t=>t.date===k);
+  const pending=list.filter(t=>!todoDone(t)).length;
+  const count=$('#todoMenuCount');if(count)count.textContent=list.length?`${pending} left`:'All set';
+  const badge=$('#todoBadge');
+  if(badge)badge.hidden=!(pending>0),badge.textContent=pending;
+  const el=$('#todoMenuList');if(!el)return;
+  el.innerHTML='';
+  if(!list.length){
+    el.innerHTML='<li class="tm-empty">No to-dos for this day yet.</li>';
+    return;
+  }
+  list.forEach(t=>{
+    const li=document.createElement('li');
+    li.className='tm-item'+(todoDone(t)?' done':'');
+    li.dataset.id=t.id;
+    li.innerHTML=`<span class="tm-check" aria-hidden="true"></span><span class="tm-dot ${t.color}"></span><span class="tm-text">${esc(t.title)}</span>`;
+    li.onclick=()=>toggleTodoDone(t.id);
+    el.append(li);
+  });
+}
+
+function render(){renderDays();renderTimeline();renderStats();renderTodos();renderTodoMenu()}
 
 function show(id,trigger){
   returnFocus=trigger||document.activeElement;
@@ -422,10 +470,16 @@ $('#todoList').onclick=e=>{
   const li=e.target.closest('.todo-item');if(!li)return;
   const t=state.todos.find(x=>x.id===li.dataset.id);if(!t)return;
   if(e.target.closest('.todo-x')){
+    if(t.scheduled&&t.eventId)state.events=state.events.filter(x=>x.id!==t.eventId);
     state.todos=state.todos.filter(x=>x.id!==t.id);
     save();render();return;
   }
-  if(e.target.closest('.todo-go')||e.target.closest('.todo-main'))scheduleTodo(t);
+  if(e.target.closest('.todo-main')){
+    if(t.scheduled)toggleTodoDone(t.id);
+    else scheduleTodo(t);
+    return;
+  }
+  if(e.target.closest('.todo-go'))scheduleTodo(t);
 };
 $('#todoForm').dataset.type=activeType;
 
@@ -451,9 +505,10 @@ $('#editOccurrence').onclick=()=>{close();setTimeout(()=>openComposer(activeEven
 $('#deleteOccurrence').onclick=()=>{
   if(!activeEvent)return;
   const src=state.events.find(e=>e.id===activeEvent.id);
-  if(!src){state.events=state.events.filter(e=>e.id!==activeEvent.id);save();render();close();return}
+  if(!src){releaseTodoForEvent(activeEvent.id);state.events=state.events.filter(e=>e.id!==activeEvent.id);save();render();close();return}
   if(src.repeat==='once'){
     state.events=state.events.filter(e=>e.id!==src.id);
+    releaseTodoForEvent(src.id);
   }else{
     if(!src.excludedDates)src.excludedDates=[];
     if(!src.excludedDates.includes(activeEvent.occurrenceDate)){
@@ -466,6 +521,7 @@ $('#deleteOccurrence').onclick=()=>{
 $('#deleteSeries').onclick=()=>{
   if(activeEvent&&confirm('Delete this entire repeating series?')){
     state.events=state.events.filter(e=>e.id!==activeEvent.id);
+    releaseTodoForEvent(activeEvent.id);
     save();render();close();
   }
 };
@@ -473,6 +529,21 @@ $('#deleteSeries').onclick=()=>{
 $$('.close').forEach(b=>b.onclick=close);
 $('#scrim').onclick=close;
 $('#settingsButton').onclick=()=>show('settings',$('#settingsButton'));
+(function todoMenuInit(){
+  const btn=$('#todoMenuButton'),menu=$('#todoMenu');
+  if(!btn||!menu)return;
+  const setOpen=open=>{
+    menu.hidden=!open;
+    btn.setAttribute('aria-expanded',open?'true':'false');
+    if(open)renderTodoMenu();
+  };
+  const isOpen=()=>!menu.hidden;
+  btn.onclick=e=>{e.stopPropagation();setOpen(!isOpen())};
+  menu.onclick=e=>e.stopPropagation();
+  document.addEventListener('click',e=>{if(!e.target.closest('#todoMenuButton')&&!e.target.closest('#todoMenu'))setOpen(false)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false)});
+  setOpen(false);
+})();
 $('#syncCard').onclick=e=>{if(e.target.tagName!=='BUTTON')show('syncSheet',$('#syncCard'))};
 $('#syncButton').onclick=()=>show('syncSheet',$('#syncButton'));
 $('#syncMessage').textContent='Offline mode \u2014 Tempo is saved in this browser on this device. Add Firebase configuration to enable cross-device sync.';

@@ -49,4 +49,38 @@
 .composer-slot.active,.composer-slot:active{background:var(--plum);color:var(--paper)}
 .composer-slot.active small{color:#cbb9d1}
 @media(hover:hover) and (pointer:fine){.tchip:hover{opacity:1;transform:translateY(-1px)}.t-slot:hover{transform:translateY(-1px);background:#ffffff26}.t-slot:first-child:hover{background:#d9ff66}.todo-go:hover{transform:translateY(-1px)}.todo-x:hover{background:#ffe1d6;color:#a3321f}.todo-submit:hover{transform:translateY(-1px)}.composer-slot:hover{transform:translateY(-1px);background:#efe3cf}}
+
+.topbar{position:relative;z-index:30}
+.topbar-actions{position:relative;display:flex;align-items:center;gap:8px;z-index:20}
+.menu-button{position:relative}
+.menu-icon{display:inline-block;width:15px;height:13px;background:
+ linear-gradient(var(--ink),var(--ink)) 0 1px/15px 3px no-repeat,
+ linear-gradient(var(--ink),var(--ink)) 0 6px/15px 3px no-repeat,
+ linear-gradient(var(--ink),var(--ink)) 0 11px/15px 3px no-repeat;
+ transform:translateY(-2px)}
+.todo-badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--peach);color:var(--plum);font:800 10px/16px inherit;text-align:center}
+.todo-menu{position:absolute;top:44px;right:0;width:262px;max-height:min(60vh,420px);background:var(--paper);color:var(--ink);border-radius:16px;box-shadow:0 16px 40px #11081970;padding:12px 12px 8px;overflow:hidden;display:flex;flex-direction:column;animation:rise .28s both}
+.todo-menu[hidden]{display:none}
+.todo-menu-title{display:flex;align-items:baseline;justify-content:space-between;margin:2px 4px 9px}
+.todo-menu-title span{font-size:13px;font-weight:800;letter-spacing:.2px}
+.todo-menu-title b{font-size:10.5px;font-weight:800;color:var(--muted)}
+.todo-menu-list{list-style:none;margin:0;padding:0;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.tm-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:11px;cursor:pointer;transition:background .15s}
+.tm-item:active{background:#efe7d9}
+.tm-check{flex:0 0 auto;width:19px;height:19px;border:2px solid #cfc2ae;border-radius:6px;background:#fff;position:relative;display:grid;place-items:center;transition:background .15s,border-color .15s}
+.tm-item.done .tm-check{background:var(--lime);border-color:var(--lime)}
+.tm-item.done .tm-check:after{content:"";width:4px;height:9px;border:solid var(--plum);border-width:0 2.5px 2.5px 0;transform:rotate(43deg) translate(-1px,-1px)}
+.tm-dot{flex:0 0 auto;width:10px;height:10px;border-radius:4px}
+.tm-dot.peach{background:var(--peach)}.tm-dot.lilac{background:var(--lilac)}.tm-dot.aqua{background:var(--aqua)}.tm-dot.lime{background:var(--lime)}
+.tm-text{flex:1;min-width:0;font:700 12.5px inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-item.done .tm-text{color:#9b8a97;text-decoration:line-through}
+.tm-empty{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:14px 0 10px}
+@media(hover:hover) and (pointer:fine){.tm-item:hover{background:#f4ecdf}}
+
+.todo-item.scheduled{border-style:dashed}
+.todo-item.done{opacity:.52}
+.todo-item.done .todo-main b{text-decoration:line-through;color:#b9a5c3}
+.todo-item.done .todo-main small{color:#8f7e93}
+
+.event.done{filter:grayscale(.55) brightness(.82) opacity(.4);box-shadow:none}
 @media(max-width:380px){.tchip{padding:5px 7px;font-size:9px}}
