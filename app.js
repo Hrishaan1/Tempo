@@ -245,6 +245,8 @@ function renderStats(){
   const free=END-START-mins;
   $('#freeTime').textContent=free>0?`${durationLabel(free)} to recharge`:'Full day \u2014 you\u2019ve got this.';
   $('#budgetText').textContent=mins?`${durationLabel(mins)} protected for what matters.`:'Your plan has room to breathe.';
+  const pct=Math.max(0,Math.min(100,mins/(END-START)*100));
+  $('#budgetRing').style.background=`conic-gradient(#df7450 0 ${pct}%,#e7dbcb ${pct}% 100%)`;
   let total=0,bars='';
   for(let i=0;i<7;i++){
     const k=dateKey(new Date(parseDate(todayKey()).getTime()+i*DAY));
