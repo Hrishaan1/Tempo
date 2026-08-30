@@ -147,15 +147,15 @@ function bestSlot(k,mins){return suggestSlots(k,mins,1)[0]||null}
 
 function scheduleTodo(t,slot=null){
   const src=state.todos.find(x=>x.id===t.id);if(!src)return;
-  if(src.scheduled&&src.eventId&&state.events.some(e=>e.id===src.eventId)){toast('Already scheduled \u2014 check it off when it\u2019s done.');return}
+  if(src.scheduled&&src.eventId&&state.events.some(e=>e.id===src.eventId)){console.log('Already scheduled \u2014 check it off when it\u2019s done.');return}
   if(!slot)slot=bestSlot(src.date,src.mins);
-  if(!slot){toast('No open spot today to fit this in \u2014 free up some time first.');return}
+  if(!slot){console.log('No open spot today to fit this in \u2014 free up some time first.');return}
   const s=slot.start,e=Math.min(s+src.mins,slot.end);
   const ev={id:uid(),todoId:src.id,title:src.title,date:src.date,start:s,end:e,color:src.color,repeat:'once',excludedDates:[],overrides:{}};
   state.events.push(ev);
   src.scheduled=true;src.eventId=ev.id;
   save();render();
-  toast(`Scheduled \u201c${shortTitle(src.title)}\u201d for ${minsLabel(s)} \u2013 ${minsLabel(e)}.`);
+  console.log(`Scheduled \u201c${shortTitle(src.title)}\u201d for ${minsLabel(s)} \u2013 ${minsLabel(e)}.`);
 }
 
 function todoDone(t){return !!(t&&t.done)}
@@ -164,7 +164,7 @@ function toggleTodoDone(id){
   const t=state.todos.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;
   save();render();
-  if(t.done)toast(`Checked off \u201c${shortTitle(t.title)}\u201d \u2014 nice work.`);
+  if(t.done)console.log(`Checked off \u201c${shortTitle(t.title)}\u201d \u2014 nice work.`);
 }
 
 function releaseTodoForEvent(id){
@@ -448,7 +448,7 @@ function addTodo(fromSchedule=false){
   $('#todoInput').value='';
   if(fromSchedule){const slot=bestSlot(t.date,t.mins);if(slot)return scheduleTodo(t,slot)}
   save();render();
-  toast('Added to your to-do list \u2014 I\u2019ll find it a spot.');
+  console.log('Added to your to-do list \u2014 I\u2019ll find it a spot.');
 }
 $('#todoForm').onsubmit=e=>{e.preventDefault();addTodo(false)};
 $('#todoTypes').onclick=e=>{
