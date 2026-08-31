@@ -1,6 +1,11 @@
 (() => {'use strict';
-const STORE='tempo.schedule.v4',START=420,END=1320,DAY=86400000;
+const STORE='tempo.schedule.v4',DAY=86400000,DEF_BREAK=10,DEF_START=420,DEF_END=1320;
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const frameStart=()=>state.settings.frameStart,frameEnd=()=>state.settings.frameEnd;
+const breakLen=()=>state.settings.breakLength;
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const minToHM=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
+const hmToMin=v=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(v||'').trim());return m?(+m[1]%24)*60+ +m[2]:NaN};
 const GREETINGS=[
   ['Make time','feel possible.'],
   ['Less rush,','more room.'],
@@ -38,6 +43,7 @@ function validEvent(e){
   if(!['once','daily','weekdays','weekly'].includes(e.repeat||'once'))return false;
   if(e.excludedDates&&!Array.isArray(e.excludedDates))return false;
   if(e.overrides&&typeof e.overrides!=='object')return false;
+  if(e.locked!==undefined&&typeof e.locked!=='boolean')return false;
   return true;
 }
 
@@ -52,12 +58,18 @@ function validTodo(t){
 function load(){
   try{
     const x=JSON.parse(localStorage.getItem(STORE)||'{}');
+    const raw=x.settings||{};
     return{
       events:Array.isArray(x.events)?x.events.filter(validEvent):[],
       todos:Array.isArray(x.todos)?x.todos.filter(validTodo):[],
-      selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(x.selectedDate||'')?x.selectedDate:todayKey()
+      selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(x.selectedDate||'')?x.selectedDate:todayKey(),
+      settings:{
+        breakLength:Number.isInteger(raw.breakLength)&&raw.breakLength>=0?raw.breakLength:DEF_BREAK,
+        frameStart:Number.isInteger(raw.frameStart)&&raw.frameStart>=0&&raw.frameStart<1440?raw.frameStart:DEF_START,
+        frameEnd:Number.isInteger(raw.frameEnd)&&raw.frameEnd>raw.frameStart&&raw.frameEnd<=1440?raw.frameEnd:DEF_END
+      }
     };
-  }catch{return{events:[],todos:[],selectedDate:todayKey()}}
+  }catch{return{events:[],todos:[],selectedDate:todayKey(),settings:{breakLength:DEF_BREAK,frameStart:DEF_START,frameEnd:DEF_END}}}
 }
 
 let state=load(),activeEvent=null,returnFocus=null,editDate=null,activeType='peach',composerTouched=false;
@@ -101,6 +113,7 @@ function eventList(k){
 }
 
 function dayGaps(k){
+  const START=frameStart(),END=frameEnd();
   const iv=eventList(k).map(e=>[e.start,e.end]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
   const gaps=[];let cur=START;
   for(const[s,e]of iv){
@@ -119,7 +132,7 @@ function slotContext(k,c){
   if(before&&after)return `after ${shortTitle(before.title)}`;
   if(before)return `after ${shortTitle(before.title)}`;
   if(after)return `before ${shortTitle(after.title)}`;
-  return c.start<=START?'from the first break':'an open stretch';
+  return c.start<=frameStart()?'from the first break':'an open stretch';
 }
 
 function suggestSlots(k,mins,limit=3){
@@ -172,6 +185,41 @@ function releaseTodoForEvent(id){
   if(t){delete t.scheduled;delete t.eventId;delete t.done}
 }
 
+function setOccurrenceTimes(src,k,start,end){
+  start=Math.round(start);end=Math.round(end);
+  if(src.repeat==='once'){src.start=start;src.end=end;return}
+  if(!src.overrides)src.overrides={};
+  src.overrides[k]={...(src.overrides[k]||{}),start,end};
+}
+
+function applyBreaks(){  const k=state.selectedDate;
+  const START=frameStart(),END=frameEnd(),brk=breakLen();
+  const occ=eventList(k);
+  const locked=occ.filter(e=>e.locked).sort((a,b)=>a.start-b.start||a.end-b.end);
+  const movable=occ.filter(e=>!e.locked).sort((a,b)=>a.start-b.start||a.end-b.end);
+  const spans=[];let cur=START;
+  for(const l of locked){
+    if(l.start>cur)spans.push([cur,Math.min(l.start,END)]);
+    cur=Math.max(cur,l.end);
+  }
+  if(cur<END)spans.push([cur,END]);
+  let si=0,cursor=spans.length?spans[0][0]:END;
+  const spanEnd=()=>si<spans.length?spans[si][1]:END;
+  let placed=0;
+  for(const m of movable){
+    const dur=m.end-m.start;
+    if(dur<=0)continue;
+    while(si<spans.length&&cursor+dur>spanEnd()){si++;cursor=si<spans.length?spans[si][0]:END}
+    if(si>=spans.length||cursor+dur>frameEnd())continue;
+    const src=state.events.find(x=>x.id===m.id);
+    if(!src)continue;
+    setOccurrenceTimes(src,k,cursor,cursor+dur);
+    cursor+=dur+brk;placed++;
+  }
+  if(placed){save();render();console.log(placed===movable.length?`Added ${brk}-min breaks between your blocks.`:`Spaced out ${placed} block${placed===1?'':'s'} \u2014 some couldn\u2019t fit.`)}
+  return placed;
+}
+
 function fmt(k,long=false){
   return parseDate(k).toLocaleDateString(undefined,long
     ?{weekday:'long',month:'long',day:'numeric'}
@@ -179,9 +227,6 @@ function fmt(k,long=false){
 }
 
 function esc(v){const s=document.createElement('span');s.textContent=v;return s.innerHTML}
-
-const minToHM=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
-const hmToMin=v=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(v||'').trim());return m?(+m[1]%24)*60+ +m[2]:NaN};
 
 let daysWindow=null;
 const DAYS_SPAN=17;
@@ -212,6 +257,7 @@ function renderDays(){
 }
 
 function renderTimeline(){
+  const START=frameStart(),END=frameEnd();
   const all=eventList(state.selectedDate),used=[];
   let max=1;
   all.forEach(e=>{
@@ -228,9 +274,9 @@ function renderTimeline(){
     const b=document.createElement('button');
     const top=(s-START)/(END-START)*100;
     const h=Math.max(2.8,(en-s)/(END-START)*100);
-    b.className=`event ${e.color}${e.todoId&&todoDone(state.todos.find(x=>x.id===e.todoId))?' done':''}`;
+    b.className=`event ${e.color}${e.locked?' locked':''}${e.todoId&&todoDone(state.todos.find(x=>x.id===e.todoId))?' done':''}`;
     b.style.cssText=`top:${top}%;height:${h}%;left:calc(${e.c/max*100}% + 5px);width:calc(${100/max}% - 7px);animation-delay:${i*45}ms`;
-    b.innerHTML=`<b>${esc(e.title)}${e.repeat!=='once'?' <em>\u21bb</em>':''}</b><small>${minsLabel(e.start)} \u2013 ${minsLabel(e.end)}</small>`;
+    b.innerHTML=`<b>${esc(e.title)}${e.repeat!=='once'?' <em>\u21bb</em>':''}<i class="lock-flag" title="Locked in place">${e.locked?'\u2298':''}</i></b><small>${minsLabel(e.start)} \u2013 ${minsLabel(e.end)}</small>`;
     b.onclick=()=>openDetail({...e,occurrenceDate:state.selectedDate});
     box.append(b);
   });
@@ -241,6 +287,7 @@ function renderTimeline(){
 }
 
 function renderStats(){
+  const START=frameStart(),END=frameEnd();
   const mins=eventList(state.selectedDate).reduce((n,e)=>n+e.end-e.start,0);
   const free=END-START-mins;
   $('#freeTime').textContent=free>0?`${durationLabel(free)} to recharge`:'Full day \u2014 you\u2019ve got this.';
@@ -306,7 +353,7 @@ function renderTodoMenu(){
   });
 }
 
-function render(){renderDays();renderTimeline();renderStats();renderTodos();renderTodoMenu()}
+function render(){renderTimeAxis();renderDays();renderTimeline();renderStats();renderTodos();renderTodoMenu();if(typeof syncSettingsUI==='function')syncSettingsUI()}
 
 function show(id,trigger){
   returnFocus=trigger||document.activeElement;
@@ -355,8 +402,11 @@ function openComposer(e=null,dateForEdit=null){
       color(e.color);
     }
     $('#repeatRule').value=e.repeat;
+    $('#lockSwitch').checked=!!e.locked;
     $('#composerTitle').textContent='Edit this day';
     $('#saveButton').innerHTML='Save changes <span>\u2192</span>';
+  }else{
+    $('#lockSwitch').checked=false;
   }
   $('#composerSlots').hidden=!!e;
   if(!e)updateComposerSlots(true);
@@ -370,6 +420,8 @@ function openDetail(e){
   $('#detailRepeat').textContent=e.repeat==='once'?'One-time plan':`Repeats ${e.repeat==='weekdays'?'every weekday':e.repeat}`;
   $('#detailColor').className=`detail-color ${e.color}`;
   $('#deleteSeries').hidden=e.repeat==='once';
+  const lk=$('#lockOccurrence');
+  if(lk){lk.classList.toggle('locked',!!e.locked);lk.innerHTML=`${e.locked?'\u2298 Unlock':'Lock in place'}`}
   show('detailSheet');
 }
 
@@ -399,18 +451,29 @@ async function importData(f){
   try{
     const d=JSON.parse(await f.text());
     if(!d||!Array.isArray(d.events)||d.events.some(e=>!validEvent(e)))throw 0;
+    const s=d.settings||{};
     state={
       events:d.events.map(e=>({...e,excludedDates:Array.isArray(e.excludedDates)?e.excludedDates:[],overrides:e.overrides||{}})),
       todos:Array.isArray(d.todos)?d.todos.filter(validTodo):[],
-      selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(d.selectedDate||'')?d.selectedDate:todayKey()
+      selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(d.selectedDate||'')?d.selectedDate:todayKey(),
+      settings:{
+        breakLength:Number.isInteger(s.breakLength)&&s.breakLength>=0?s.breakLength:DEF_BREAK,
+        frameStart:Number.isInteger(s.frameStart)&&s.frameStart>=0&&s.frameStart<1440?s.frameStart:DEF_START,
+        frameEnd:Number.isInteger(s.frameEnd)&&s.frameEnd>s.frameStart&&s.frameEnd<=1440?s.frameEnd:DEF_END
+      }
     };
     save();render();close();console.log(`Imported ${state.events.length} blocks.`);
   }catch{console.log("That isn't a valid Tempo backup.");}finally{$('#importFile').value=''}
 }
 
-for(let h=START;h<=END;h+=60){
-  $('#timeLabels').insertAdjacentHTML('beforeend',`<span>${minsLabel(h).replace(':00','')}</span>`);
-  $('#hourLines').insertAdjacentHTML('beforeend','<i></i>');
+function renderTimeAxis(){
+  const START=frameStart(),END=frameEnd();
+  const tl=$('#timeLabels'),hl=$('#hourLines');
+  tl.innerHTML='';hl.innerHTML='';
+  for(let h=START;h<=END;h+=60){
+    tl.insertAdjacentHTML('beforeend',`<span>${minsLabel(h).replace(':00','')}</span>`);
+    hl.insertAdjacentHTML('beforeend','<i></i>');
+  }
 }
 $('#planButton').onclick=()=>openComposer();
 $('#planButtonAside').onclick=()=>openComposer();
@@ -491,18 +554,30 @@ $('#taskForm').onsubmit=e=>{
   if(!title){err.textContent='Add a task name first.';$('#taskName').focus();return}
   if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start){err.textContent='Your end time needs to be after the start time.';(Number.isInteger(start)?$('#endTime'):$('#startTime')).focus();return}
   const id=$('#editId').value,old=state.events.find(e=>e.id===id);
+  const locked=$('#lockSwitch').checked;
   if(old&&editDate&&old.repeat!=='once'){
     if(!old.overrides)old.overrides={};
     old.overrides[editDate]={title,start,end,color:$('.chip.active').dataset.color};
+    old.locked=locked;
   }else if(old){
-    Object.assign(old,{title,start,end,color:$('.chip.active').dataset.color,repeat:$('#repeatRule').value});
+    Object.assign(old,{title,start,end,color:$('.chip.active').dataset.color,repeat:$('#repeatRule').value,locked});
   }else{
-    state.events.push({id:uid(),title,date:state.selectedDate,start,end,color:$('.chip.active').dataset.color,repeat:$('#repeatRule').value,excludedDates:[],overrides:{}});
+    state.events.push({id:uid(),title,date:state.selectedDate,start,end,color:$('.chip.active').dataset.color,repeat:$('#repeatRule').value,excludedDates:[],overrides:{},locked});
   }
   save();render();close();console.log(id?'Plan updated.':'Added to your day.');
 };
 
 $('#editOccurrence').onclick=()=>{close();setTimeout(()=>openComposer(activeEvent,activeEvent?.occurrenceDate),280)};
+
+$('#lockOccurrence').onclick=()=>{
+  if(!activeEvent)return;
+  const src=state.events.find(e=>e.id===activeEvent.id);
+  if(!src)return;
+  const next=!src.locked;
+  src.locked=next;
+  save();render();
+  openDetail({...activeEvent,locked:next});
+};
 
 $('#deleteOccurrence').onclick=()=>{
   if(!activeEvent)return;
@@ -530,7 +605,30 @@ $('#deleteSeries').onclick=()=>{
 
 $$('.close').forEach(b=>b.onclick=close);
 $('#scrim').onclick=close;
+$('#breaksButton').onclick=()=>applyBreaks();
 $('#settingsButton').onclick=()=>show('settings',$('#settingsButton'));
+
+function syncSettingsUI(){
+  const fs=$('#frameStartTime'),fe=$('#frameEndTime'),bs=$('#breakSelect');
+  if(fs)fs.value=minToHM(state.settings.frameStart);
+  if(fe)fe.value=minToHM(state.settings.frameEnd);
+  if(bs)bs.value=String(state.settings.breakLength);
+}
+function updateFrame(){
+  const k=state.selectedDate,fs=hmToMin($('#frameStartTime').value),fe=hmToMin($('#frameEndTime').value);
+  if(!Number.isInteger(fs)||!Number.isInteger(fe)||fe<=fs){console.log('End time needs to be after the start time.');return}
+  state.settings.frameStart=clamp(fs,0,1439);
+  state.settings.frameEnd=clamp(fe,1,1440);
+  if(state.settings.frameEnd<=state.settings.frameStart)state.settings.frameEnd=state.settings.frameStart+30;
+  save();render();
+}
+$('#frameStartTime').onchange=updateFrame;
+$('#frameEndTime').onchange=updateFrame;
+$('#breakSelect').onchange=()=>{
+  state.settings.breakLength=Number($('#breakSelect').value)||0;
+  save();
+};
+syncSettingsUI();
 (function todoMenuInit(){
   const btn=$('#todoMenuButton'),menu=$('#todoMenu');
   if(!btn||!menu)return;
@@ -558,12 +656,12 @@ $('#importFile').onchange=e=>e.target.files[0]&&importData(e.target.files[0]);
 $('#demoButton').onclick=demo;
 $('#clearButton').onclick=()=>{
   if(confirm('Clear every Tempo task from this device? This cannot be undone.')){
-    state={events:[],todos:[],selectedDate:todayKey()};save();render();close();console.log('Schedule cleared.');
+    state={events:[],todos:[],selectedDate:todayKey(),settings:state.settings};save();render();close();console.log('Schedule cleared.');
   }
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 
-window.TempoApp={validEvent:validEvent,validTodo:validTodo,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setSelectedDate:function(d){state.selectedDate=d},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos};
+window.TempoApp={validEvent:validEvent,validTodo:validTodo,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos};
 
 if(window.TempoFirebase){
   window.TempoFirebase.init();

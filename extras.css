@@ -12,3 +12,28 @@
 #notifySwitch:checked+.notify-toggle .switch i{left:21px}
 #notifySwitch:focus-visible+.notify-toggle{outline:2px solid var(--lime);outline-offset:2px}
 .notify-block>.settings-copy{margin-top:8px}
+
+.head-actions{display:flex;align-items:center;gap:9px}
+.breaks-button{border:1px solid #ffffff2a;background:#ffffff12;color:var(--paper);font:800 10px inherit;letter-spacing:.2px;padding:6px 10px;border-radius:9px;cursor:pointer}
+.breaks-button:hover{background:#ffffff22;border-color:#ffffff48;transform:translateY(-1px)}
+.breaks-button:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.lock-flag{float:right;font-style:normal;font-size:11px;line-height:1;margin-left:4px}
+.event.locked{border:2px solid #ffffff88;outline:2px solid #ffffff2a}
+.detail-actions #lockOccurrence{background:#eef1e5;color:#4c6b28}
+.detail-actions #lockOccurrence.locked{background:#f2e9e4;color:#7a5237}
+.detail-actions #lockOccurrence:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.lock-row{display:flex;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid #e4dacb;cursor:pointer}
+.lock-row>span:first-child{font-size:20px;color:#8870ae}
+.lock-row b,.lock-row small{display:block}
+.lock-row small{font-size:10px;color:#907e8b;margin-top:2px}
+.lock-row .switch{position:relative;flex:0 0 auto;margin-left:auto;width:44px;height:26px;border-radius:13px;background:#d9cebe;transition:background .18s}
+.lock-row .switch i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fffaf0;transition:left .18s}
+#lockSwitch:checked+.switch{background:var(--lime)}
+#lockSwitch:checked+.switch i{left:21px}
+#lockSwitch:focus-visible+.switch{outline:2px solid var(--lime);outline-offset:2px}
+.settings-group{margin-top:20px}
+.settings-group>.eyebrow:first-child{color:#8870ae}
+.settings-group>.settings-copy{font-size:12px;margin-bottom:6px}
+.frame-inputs{display:grid;grid-template-columns:1fr 22px 1fr;align-items:end;gap:6px;margin:8px 0 2px}
+.frame-inputs span{padding-bottom:13px;text-align:center;font:italic 16px Georgia;color:#9a8995}
+.frame-inputs select,.frame-inputs input[type=time]{display:block;width:100%;margin-top:6px;padding:10px 7px;border:1px solid #dfd3c2;border-radius:10px;background:white;color:var(--ink);font:800 13px inherit}

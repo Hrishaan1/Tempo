@@ -65,6 +65,7 @@ window.TempoFirebase = (function () {
       if (Array.isArray(cloud.todos)) app.setTodos(cloud.todos.filter(app.validTodo));
       app.setSelectedDate(/^\d{4}-\d{2}-\d{2}$/.test(cloud.selectedDate || '')
         ? cloud.selectedDate : app.todayKey());
+      if (cloud.settings && typeof cloud.settings === 'object') app.setSettings(cloud.settings);
       app.save(false);
       app.render();
       updateSyncUI();
@@ -105,6 +106,7 @@ window.TempoFirebase = (function () {
       events: app.getState().events,
       todos: app.getState().todos || [],
       selectedDate: app.getState().selectedDate,
+      settings: app.getState().settings,
       updatedAt: new Date().toISOString(),
       tzOffset: new Date().getTimezoneOffset()
     }).catch(function (e) {
@@ -127,6 +129,7 @@ window.TempoFirebase = (function () {
       app.setEvents(data.events.filter(app.validEvent));
       if (Array.isArray(data.todos)) app.setTodos(data.todos.filter(app.validTodo));
       if (/^\d{4}-\d{2}-\d{2}$/.test(data.selectedDate || '')) app.setSelectedDate(data.selectedDate);
+      if (data.settings && typeof data.settings === 'object') app.setSettings(data.settings);
       app.render();
     }, function (e) {
       console.warn('Tempo: listener error', e);
