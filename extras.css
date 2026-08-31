@@ -39,3 +39,5 @@
 .frame-inputs select,.frame-inputs input[type=time]{display:block;width:100%;margin-top:6px;padding:10px 7px;border:1px solid #dfd3c2;border-radius:10px;background:white;color:var(--ink);font:800 13px inherit}
 
 .settings-sheet{max-height:min(86vh,760px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+@media(max-width:480px){.settings-sheet{max-height:min(76vh,600px)}}
