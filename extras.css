@@ -37,3 +37,5 @@
 .frame-inputs{display:grid;grid-template-columns:1fr 22px 1fr;align-items:end;gap:6px;margin:8px 0 2px}
 .frame-inputs span{padding-bottom:13px;text-align:center;font:italic 16px Georgia;color:#9a8995}
 .frame-inputs select,.frame-inputs input[type=time]{display:block;width:100%;margin-top:6px;padding:10px 7px;border:1px solid #dfd3c2;border-radius:10px;background:white;color:var(--ink);font:800 13px inherit}
+
+.settings-sheet{max-height:min(86vh,760px);overflow-y:auto;-webkit-overflow-scrolling:touch}
