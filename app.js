@@ -176,8 +176,35 @@ function todoDone(t){return !!(t&&t.done)}
 function toggleTodoDone(id){
   const t=state.todos.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;
+  const wasDone=t.done;
   save();render();
-  if(t.done)console.log(`Checked off \u201c${shortTitle(t.title)}\u201d \u2014 nice work.`);
+  if(wasDone){
+    console.log(`Checked off \u201c${shortTitle(t.title)}\u201d \u2014 nice work.`);
+    confetti();
+  }
+}
+
+function confetti(origin=null){
+  const layer=document.createElement('div');
+  layer.className='confetti-layer';
+  const colors=['#c8ff3d','#ffb292','#d4b0ff','#9ce9df','#ffe9c7'];
+  const count=window.innerWidth<480?70:100;
+  let inner='';
+  for(let i=0;i<count;i++){
+    const c=colors[Math.floor(Math.random()*colors.length)];
+    const l=(Math.random()*100).toFixed(1);
+    const d=(Math.random()*1.7+1.1)*1000;
+    const delay=(Math.random()*0.55).toFixed(2);
+    const size=(Math.random()*6+5).toFixed(1);
+    const h=(size* (Math.random()<0.35?1:0.5)).toFixed(1);
+    const rot=(Math.random()*360).toFixed(0);
+    const circle=Math.random()<0.3;
+    const drift=(Math.random()*120-60).toFixed(0);
+    inner+=`<i class="${circle?'circle':''}" style="left:${l}%;width:${size}px;height:${h}px;background:${c};--d:${drift}px;animation-duration:${d}ms;animation-delay:${delay}s;--r:${rot}deg"></i>`;
+  }
+  layer.innerHTML=inner;
+  document.body.appendChild(layer);
+  setTimeout(()=>layer.remove(),2800);
 }
 
 function releaseTodoForEvent(id){
