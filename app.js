@@ -187,24 +187,46 @@ function toggleTodoDone(id){
 function confetti(origin=null){
   const layer=document.createElement('div');
   layer.className='confetti-layer';
-  const colors=['#c8ff3d','#ffb292','#d4b0ff','#9ce9df','#ffe9c7'];
-  const count=window.innerWidth<480?70:100;
-  let inner='';
-  for(let i=0;i<count;i++){
-    const c=colors[Math.floor(Math.random()*colors.length)];
-    const l=(Math.random()*100).toFixed(1);
-    const d=(Math.random()*1.7+1.1)*1000;
-    const delay=(Math.random()*0.55).toFixed(2);
-    const size=(Math.random()*6+5).toFixed(1);
-    const h=(size* (Math.random()<0.35?1:0.5)).toFixed(1);
-    const rot=(Math.random()*360).toFixed(0);
-    const circle=Math.random()<0.3;
-    const drift=(Math.random()*120-60).toFixed(0);
-    inner+=`<i class="${circle?'circle':''}" style="left:${l}%;width:${size}px;height:${h}px;background:${c};--d:${drift}px;animation-duration:${d}ms;animation-delay:${delay}s;--r:${rot}deg"></i>`;
-  }
-  layer.innerHTML=inner;
   document.body.appendChild(layer);
-  setTimeout(()=>layer.remove(),2800);
+  const colors=['#c8ff3d','#ffb292','#d4b0ff','#9ce9df','#ffe9c7'];
+  const W=window.innerWidth,H=window.innerHeight;
+  const count=W<480?70:100;
+  const SCALE=4;
+  const ps=[];
+  for(let i=0;i<count;i++){
+    const el=document.createElement('i');
+    const circle=Math.random()<0.3;
+    const size=5+Math.random()*6;
+    el.className=circle?'circle':'';
+    el.style.width=size+'px';
+    el.style.height=(circle?size:size*0.55)+'px';
+    el.style.background=colors[Math.floor(Math.random()*colors.length)];
+    layer.appendChild(el);
+    ps.push({
+      el,
+      x:Math.random()*W,
+      y:H+10,
+      vx:(Math.random()-0.5)*7,
+      velocity:10+Math.random()*10,
+      rot:Math.random()*360,
+      vr:(Math.random()-0.5)*18
+    });
+  }
+  const GRAVITY=0.5;
+  function step(){
+    let alive=0;
+    for(const p of ps){
+      p.y-=p.velocity*SCALE;
+      p.velocity-=GRAVITY;
+      p.x+=p.vx;
+      p.rot+=p.vr;
+      if(p.y<H+50)alive++;
+      p.el.style.transform=`translate3d(${p.x}px,${p.y}px,0) rotate(${p.rot}deg)`;
+    }
+    if(alive)requestAnimationFrame(step);
+    else layer.remove();
+  }
+  requestAnimationFrame(step);
 }
 
 function releaseTodoForEvent(id){

@@ -43,11 +43,6 @@
 @media(max-width:480px){.settings-sheet{max-height:min(76vh,600px)}}
 
 .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
-.confetti-layer i{position:absolute;top:-14px;border-radius:2px;opacity:0;animation-name:confetti-fall;animation-timing-function:cubic-bezier(.16,.62,.4,1);animation-iteration-count:1;animation-fill-mode:forwards}
+.confetti-layer i{position:absolute;left:0;top:0;border-radius:2px;will-change:transform}
 .confetti-layer i.circle{border-radius:50%}
-@keyframes confetti-fall{
-  0%{transform:translate(0,0) rotate(0deg);opacity:0}
-  8%{opacity:1}
-  100%{transform:translate(var(--d,0),106vh) rotate(var(--r,720deg));opacity:.85}
-}
 @media(prefers-reduced-motion:reduce){.confetti-layer{display:none}}
