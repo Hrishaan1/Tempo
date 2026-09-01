@@ -302,7 +302,33 @@ function renderDays(){
     track.style.transition='transform .45s cubic-bezier(.22,1,.36,1)';
     track.style.transform=`translateX(${to}px)`;
   }
-  $('#dateLabel').textContent=fmt(sel,true).toUpperCase();
+  renderDateLabel();
+}
+
+function timeGreeting(){
+  const h=new Date().getHours();
+  if(h>=16&&h<18)return 'Good evening';
+  if(h>=18||h<3)return 'Good night';
+  if(h>=12)return 'Good afternoon';
+  return 'Good morning';
+}
+
+function userGreetingName(){
+  const fb=window.TempoFirebase;
+  let name=null;
+  if(fb&&typeof fb.getCurrentUserName==='function')name=fb.getCurrentUserName();
+  if(name)return String(name).trim().split(/\s+/)[0].trim();
+  let email=null;
+  if(fb&&typeof fb.getCurrentUserEmail==='function')email=fb.getCurrentUserEmail();
+  if(!email)return null;
+  const fromEmail=String(email).split('@')[0].replace(/[._-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase()).trim();
+  return fromEmail||null;
+}
+
+function renderDateLabel(){
+  const name=userGreetingName();
+  const base=fmt(state.selectedDate,true).toUpperCase();
+  $('#dateLabel').textContent=(name?`${timeGreeting()}, ${name} \u00b7 `:'')+base;
 }
 
 function renderTimeline(){
@@ -710,7 +736,7 @@ $('#clearButton').onclick=()=>{
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 
-window.TempoApp={validEvent:validEvent,validTodo:validTodo,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos};
+window.TempoApp={validEvent:validEvent,validTodo:validTodo,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
 
 if(window.TempoFirebase){
   window.TempoFirebase.init();

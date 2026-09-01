@@ -144,6 +144,7 @@ window.TempoFirebase = (function () {
     currentUser = user;
     stopListener();
     if (window.TempoNotifications) window.TempoNotifications.onAuthChanged(user ? user.uid : null);
+    if (window.TempoApp && window.TempoApp.refreshGreeting) window.TempoApp.refreshGreeting();
     if (user) {
       updateSyncUI();
       updateSettingsSync();
@@ -229,6 +230,12 @@ window.TempoFirebase = (function () {
     saveToCloud: saveToCloud,
     loadScheduleFromCloud: loadScheduleFromCloud,
     updateSyncUI: updateSyncUI,
-    updateSettingsSync: updateSettingsSync
+    updateSettingsSync: updateSettingsSync,
+    getCurrentUserEmail: function () {
+      return currentUser ? (currentUser.email || null) : null;
+    },
+    getCurrentUserName: function () {
+      return currentUser ? (currentUser.displayName || null) : null;
+    }
   };
 })();
