@@ -432,6 +432,7 @@ function render(){renderTimeAxis();renderDays();renderTimeline();renderStats();r
 
 function show(id,trigger){
   returnFocus=trigger||document.activeElement;
+  $$('.sheet.active').forEach(s=>{if(s.id!==id){s.classList.remove('active');s.hidden=true}});
   $('#scrim').classList.add('active');
   const s=$('#'+id);s.hidden=false;
   requestAnimationFrame(()=>s.classList.add('active'));
