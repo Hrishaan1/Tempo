@@ -63,6 +63,7 @@ window.TempoFirebase = (function () {
       var parsed = cloud.events.filter(app.validEvent);
       app.setEvents(parsed);
       if (Array.isArray(cloud.todos)) app.setTodos(cloud.todos.filter(app.validTodo));
+      if (Array.isArray(cloud.allDay)) app.setAllDay(cloud.allDay.filter(app.validAllDay));
       app.setSelectedDate(/^\d{4}-\d{2}-\d{2}$/.test(cloud.selectedDate || '')
         ? cloud.selectedDate : app.todayKey());
       if (cloud.settings && typeof cloud.settings === 'object') app.setSettings(cloud.settings);
@@ -105,6 +106,7 @@ window.TempoFirebase = (function () {
     ref.set({
       events: app.getState().events,
       todos: app.getState().todos || [],
+      allDay: app.getState().allDay || [],
       selectedDate: app.getState().selectedDate,
       settings: app.getState().settings,
       updatedAt: new Date().toISOString(),
@@ -128,6 +130,7 @@ window.TempoFirebase = (function () {
       if (!app) return;
       app.setEvents(data.events.filter(app.validEvent));
       if (Array.isArray(data.todos)) app.setTodos(data.todos.filter(app.validTodo));
+      if (Array.isArray(data.allDay)) app.setAllDay(data.allDay.filter(app.validAllDay));
       if (/^\d{4}-\d{2}-\d{2}$/.test(data.selectedDate || '')) app.setSelectedDate(data.selectedDate);
       if (data.settings && typeof data.settings === 'object') app.setSettings(data.settings);
       app.render();

@@ -55,6 +55,14 @@ function validTodo(t){
   return true;
 }
 
+function validAllDay(a){
+  if(!a||typeof a.id!=='string'||typeof a.title!=='string')return false;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(a.date))return false;
+  if(!['once','daily','weekdays','weekly'].includes(a.repeat||'once'))return false;
+  if(a.excludedDates&&!Array.isArray(a.excludedDates))return false;
+  return true;
+}
+
 function load(){
   try{
     const x=JSON.parse(localStorage.getItem(STORE)||'{}');
@@ -62,6 +70,7 @@ function load(){
     return{
       events:Array.isArray(x.events)?x.events.filter(validEvent):[],
       todos:Array.isArray(x.todos)?x.todos.filter(validTodo):[],
+      allDay:Array.isArray(x.allDay)?x.allDay.filter(validAllDay):[],
       selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(x.selectedDate||'')?x.selectedDate:todayKey(),
       settings:{
         breakLength:Number.isInteger(raw.breakLength)&&raw.breakLength>=0?raw.breakLength:DEF_BREAK,
@@ -69,7 +78,7 @@ function load(){
         frameEnd:Number.isInteger(raw.frameEnd)&&raw.frameEnd>raw.frameStart&&raw.frameEnd<=1440?raw.frameEnd:DEF_END
       }
     };
-  }catch{return{events:[],todos:[],selectedDate:todayKey(),settings:{breakLength:DEF_BREAK,frameStart:DEF_START,frameEnd:DEF_END}}}
+  }catch{return{events:[],todos:[],allDay:[],selectedDate:todayKey(),settings:{breakLength:DEF_BREAK,frameStart:DEF_START,frameEnd:DEF_END}}}
 }
 
 let state=load(),activeEvent=null,returnFocus=null,editDate=null,activeType='peach',composerTouched=false;
@@ -110,6 +119,10 @@ function eventList(k){
     }
     return e;
   }).sort((a,b)=>a.start-b.start||a.end-b.end);
+}
+
+function allDayList(k){
+  return state.allDay.filter(a=>occurs(a,k));
 }
 
 function dayGaps(k){
@@ -380,6 +393,54 @@ function renderStats(){
   $('#barChart').innerHTML=bars;
 }
 
+let allDayAdding=false;
+
+function renderAllDay(){
+  const k=state.selectedDate,list=allDayList(k);
+  const box=$('#allDayBanner');if(!box)return;
+  box.innerHTML='';
+  list.forEach(a=>{
+    const chip=document.createElement('span');
+    chip.className='all-day-chip';
+    chip.innerHTML=`<span>${esc(a.title)}</span><button class="all-day-x" title="Remove" data-id="${a.id}">&times;</button>`;
+    if(a.repeat!=='once'){
+      const r=document.createElement('small');
+      r.className='all-day-repeat';
+      r.textContent=a.repeat==='daily'?'daily':a.repeat==='weekdays'?'weekdays':a.repeat==='weekly'?'weekly':'';
+      chip.appendChild(r);
+    }
+    box.append(chip);
+  });
+  if(allDayAdding){
+    const form=document.createElement('form');
+    form.className='all-day-form';
+    form.innerHTML=`<input id="allDayInput" class="all-day-input" type="text" placeholder="e.g. No school" maxlength="40" autocomplete="off"><select id="allDayRepeat" class="all-day-select"><option value="once">One day</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Weekly</option></select><button type="submit" class="all-day-save" aria-label="Add note">&check;</button><button type="button" class="all-day-cancel" aria-label="Cancel">&times;</button>`;
+    box.append(form);
+    const inp=form.querySelector('#allDayInput');
+    if(inp)setTimeout(()=>inp.focus(),60);
+  }else{
+    const btn=document.createElement('button');
+    btn.className='all-day-add';
+    btn.textContent='+ Add note';
+    btn.onclick=()=>{allDayAdding=true;renderAllDay()};
+    box.append(btn);
+  }
+}
+
+function addAllDay(){
+  const inp=$('#allDayInput'),rep=$('#allDayRepeat');
+  const title=inp?inp.value.trim():'';
+  if(!title){if(inp)inp.focus();return}
+  state.allDay.push({id:uid(),title,date:state.selectedDate,repeat:rep?rep.value:'once',excludedDates:[]});
+  allDayAdding=false;
+  save();render();
+}
+
+function deleteAllDay(id){
+  state.allDay=state.allDay.filter(a=>a.id!==id);
+  save();render();
+}
+
 function renderTodos(){
   const k=state.selectedDate,list=state.todos.filter(t=>t.date===k);
   const pending=list.filter(t=>!todoDone(t)).length;
@@ -428,7 +489,7 @@ function renderTodoMenu(){
   });
 }
 
-function render(){renderTimeAxis();renderDays();renderTimeline();renderStats();renderTodos();renderTodoMenu();if(typeof syncSettingsUI==='function')syncSettingsUI()}
+function render(){renderTimeAxis();renderDays();renderTimeline();renderStats();renderAllDay();renderTodos();renderTodoMenu();if(typeof syncSettingsUI==='function')syncSettingsUI()}
 
 function show(id,trigger){
   returnFocus=trigger||document.activeElement;
@@ -513,12 +574,16 @@ function demo(){
     {id:uid(),title:'Finish English essay',date:d,color:'peach',mins:60},
     {id:uid(),title:'Call Nana',date:d,color:'aqua',mins:30}
   ];
+  state.allDay=[
+    {id:uid(),title:'Early release \u2014 no school',date:d,repeat:'weekdays',excludedDates:[]},
+    {id:uid(),title:'Nana\u2019s birthday',date:d,repeat:'once',excludedDates:[]}
+  ];
   state.selectedDate=d;save();render();close();console.log('Demo schedule loaded.');
 }
 
 function exportData(){
   const a=document.createElement('a');
-  const b=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});
+  const b=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),events:state.events,todos:state.todos,allDay:state.allDay||[],selectedDate:state.selectedDate,settings:state.settings},null,2)],{type:'application/json'});
   a.href=URL.createObjectURL(b);a.download=`tempo-schedule-${todayKey()}.json`;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);console.log('Schedule exported.');
 }
@@ -531,6 +596,7 @@ async function importData(f){
     state={
       events:d.events.map(e=>({...e,excludedDates:Array.isArray(e.excludedDates)?e.excludedDates:[],overrides:e.overrides||{}})),
       todos:Array.isArray(d.todos)?d.todos.filter(validTodo):[],
+      allDay:Array.isArray(d.allDay)?d.allDay.map(a=>({...a,excludedDates:Array.isArray(a.excludedDates)?a.excludedDates:[]})).filter(validAllDay):[],
       selectedDate:/^\d{4}-\d{2}-\d{2}$/.test(d.selectedDate||'')?d.selectedDate:todayKey(),
       settings:{
         breakLength:Number.isInteger(s.breakLength)&&s.breakLength>=0?s.breakLength:DEF_BREAK,
@@ -598,6 +664,15 @@ $('#todoTypes').onclick=e=>{
   $('#todoForm').dataset.type=activeType;
   $$('#todoTypes .tchip').forEach(c=>c.classList.toggle('active',c===b));
   updateTodoSuggest();
+};
+$('#allDayBanner').onclick=e=>{
+  const x=e.target.closest('.all-day-cancel');
+  if(x){allDayAdding=false;renderAllDay();return}
+  const del=e.target.closest('.all-day-x');
+  if(del){deleteAllDay(del.dataset.id);return}
+};
+$('#allDayBanner').onsubmit=e=>{
+  e.preventDefault();addAllDay();
 };
 $('#todoInput').addEventListener('input',updateTodoSuggest);
 $('#todoSlots').onclick=e=>{
@@ -732,12 +807,12 @@ $('#importFile').onchange=e=>e.target.files[0]&&importData(e.target.files[0]);
 $('#demoButton').onclick=demo;
 $('#clearButton').onclick=()=>{
   if(confirm('Clear every Tempo task from this device? This cannot be undone.')){
-    state={events:[],todos:[],selectedDate:todayKey(),settings:state.settings};save();render();close();console.log('Schedule cleared.');
+    state={events:[],todos:[],allDay:[],selectedDate:todayKey(),settings:state.settings};save();render();close();console.log('Schedule cleared.');
   }
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 
-window.TempoApp={validEvent:validEvent,validTodo:validTodo,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
+window.TempoApp={validEvent:validEvent,validTodo:validTodo,validAllDay:validAllDay,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setAllDay:function(allDay){state.allDay=allDay},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
 
 if(window.TempoFirebase){
   window.TempoFirebase.init();
