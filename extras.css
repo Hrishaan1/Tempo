@@ -37,6 +37,10 @@
 .breaks-button:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
 .lock-flag{float:right;font-style:normal;font-size:11px;line-height:1;margin-left:4px}
 .event.locked{border:2px solid #ffffff88;outline:2px solid #ffffff2a}
+.detail-actions #giveMe15Button{background:#e3f6f2;color:#23685e}
+.detail-actions #giveMe15Button:hover{background:#d3f0ea;transform:translateY(-1px)}
+.detail-actions #giveMe15Button:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.detail-actions #giveMe15Button:disabled{background:#ece7e2;color:#a89c95;cursor:default;transform:none}
 .detail-actions #lockOccurrence{background:#eef1e5;color:#4c6b28}
 .detail-actions #lockOccurrence.locked{background:#f2e9e4;color:#7a5237}
 .detail-actions #lockOccurrence:focus-visible{outline:2px solid var(--lime);outline-offset:2px}

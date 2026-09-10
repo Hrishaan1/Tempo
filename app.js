@@ -282,6 +282,34 @@ function applyBreaks(){  const k=state.selectedDate;
   return placed;
 }
 
+function giveMe15(occ){
+  const k=state.selectedDate,END=frameEnd();
+  const all=eventList(k);
+  const idx=all.findIndex(x=>x.id===occ.id);
+  if(idx<0)return false;
+  const sel=all[idx];
+  if(sel.locked||sel.end+15>END){console.log(sel.locked?'Locked blocks never move.':'No room to push it later.');return false}
+  const plans=[{b:sel,start:sel.start+15,end:sel.end+15}];
+  let cursor=sel.end+15;
+  for(let j=idx+1;j<all.length;j++){
+    const b=all[j];
+    if(b.start>=cursor)break;
+    if(b.locked){console.log('Can\u2019t push past a locked block.');return false}
+    const d=b.end-b.start;
+    if(cursor+d>END){console.log('No room to push it later.');return false}
+    plans.push({b,start:cursor,end:cursor+d});
+    cursor+=d;
+  }
+  for(const p of plans){
+    const src=state.events.find(x=>x.id===p.b.id);
+    if(!src)continue;
+    setOccurrenceTimes(src,k,p.start,p.end);
+  }
+  save();render();
+  console.log('Gave you 15 min \u2014 pushed '+plans.length+' block'+(plans.length===1?'':'s')+'.');
+  return true;
+}
+
 function fmt(k,long=false){
   return parseDate(k).toLocaleDateString(undefined,long
     ?{weekday:'long',month:'long',day:'numeric'}
@@ -559,6 +587,8 @@ function openDetail(e){
   $('#deleteSeries').hidden=e.repeat==='once';
   const lk=$('#lockOccurrence');
   if(lk){lk.classList.toggle('locked',!!e.locked);lk.innerHTML=`${e.locked?'\u2298 Unlock':'Lock in place'}`}
+  const gm=$('#giveMe15Button');
+  if(gm){gm.disabled=!!e.locked||e.end+15>frameEnd()}
   show('detailSheet');
 }
 
@@ -730,6 +760,11 @@ $('#lockOccurrence').onclick=()=>{
   openDetail({...activeEvent,locked:next});
 };
 
+$('#giveMe15Button').onclick=()=>{
+  if(!activeEvent)return;
+  if(giveMe15(activeEvent))close();
+};
+
 $('#deleteOccurrence').onclick=()=>{
   if(!activeEvent)return;
   const src=state.events.find(e=>e.id===activeEvent.id);
@@ -812,7 +847,7 @@ $('#clearButton').onclick=()=>{
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 
-window.TempoApp={validEvent:validEvent,validTodo:validTodo,validAllDay:validAllDay,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setAllDay:function(allDay){state.allDay=allDay},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
+window.TempoApp={validEvent:validEvent,validTodo:validTodo,validAllDay:validAllDay,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setAllDay:function(allDay){state.allDay=allDay},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,giveMe15:giveMe15,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
 
 if(window.TempoFirebase){
   window.TempoFirebase.init();
