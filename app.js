@@ -832,6 +832,7 @@ syncSettingsUI();
 })();
 $('#syncCard').onclick=e=>{if(e.target.tagName!=='BUTTON')show('syncSheet',$('#syncCard'))};
 $('#syncButton').onclick=()=>show('syncSheet',$('#syncButton'));
+$('#resourcesButton').onclick=()=>show('resourcesSheet',$('#resourcesButton'));
 $('#syncMessage').textContent='Offline mode \u2014 Tempo is saved in this browser on this device. Add Firebase configuration to enable cross-device sync.';
 $('#exportButton').onclick=exportData;
 $('#settingsExport').onclick=exportData;
