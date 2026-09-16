@@ -3,6 +3,7 @@ const STORE='tempo.schedule.v4',DAY=86400000,DEF_BREAK=10,DEF_START=420,DEF_END=
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const frameStart=()=>state.settings.frameStart,frameEnd=()=>state.settings.frameEnd;
 const breakLen=()=>state.settings.breakLength;
+const CURRENT_BLOCK_WINDOW=5;
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const minToHM=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
 const hmToMin=v=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(v||'').trim());return m?(+m[1]%24)*60+ +m[2]:NaN};
@@ -254,6 +255,12 @@ function setOccurrenceTimes(src,k,start,end){
   src.overrides[k]={...(src.overrides[k]||{}),start,end};
 }
 
+function isCurrentBlock(occ,now=new Date()){
+  if(state.selectedDate!==todayKey())return false;
+  const minutes=now.getHours()*60+now.getMinutes();
+  return minutes>=occ.start+CURRENT_BLOCK_WINDOW&&minutes<=occ.end+CURRENT_BLOCK_WINDOW;
+}
+
 function applyBreaks(){  const k=state.selectedDate;
   const START=frameStart(),END=frameEnd(),brk=breakLen();
   const occ=eventList(k);
@@ -289,7 +296,8 @@ function giveMe15(occ){
   if(idx<0)return false;
   const sel=all[idx];
   if(sel.locked||sel.end+15>END){console.log(sel.locked?'Locked blocks never move.':'No room to push it later.');return false}
-  const plans=[{b:sel,start:sel.start+15,end:sel.end+15}];
+  const extending=isCurrentBlock(sel);
+  const plans=[{b:sel,start:extending?sel.start:sel.start+15,end:sel.end+15}];
   let cursor=sel.end+15;
   for(let j=idx+1;j<all.length;j++){
     const b=all[j];
@@ -306,7 +314,9 @@ function giveMe15(occ){
     setOccurrenceTimes(src,k,p.start,p.end);
   }
   save();render();
-  console.log('Gave you 15 min \u2014 pushed '+plans.length+' block'+(plans.length===1?'':'s')+'.');
+  console.log(extending
+    ?'Added 15 min \u2014 extended this block and pushed '+(plans.length-1)+' following block'+(plans.length===2?'':'s')+'.'
+    :'Gave you 15 min \u2014 pushed '+plans.length+' block'+(plans.length===1?'':'s')+'.');
   return true;
 }
 
@@ -588,7 +598,10 @@ function openDetail(e){
   const lk=$('#lockOccurrence');
   if(lk){lk.classList.toggle('locked',!!e.locked);lk.innerHTML=`${e.locked?'\u2298 Unlock':'Lock in place'}`}
   const gm=$('#giveMe15Button');
-  if(gm){gm.disabled=!!e.locked||e.end+15>frameEnd()}
+  if(gm){
+    gm.disabled=!!e.locked||e.end+15>frameEnd();
+    gm.textContent=isCurrentBlock(e)?'+ Add 15 minutes':'↻ Give Me 15';
+  }
   show('detailSheet');
 }
 
