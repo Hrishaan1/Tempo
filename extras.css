@@ -31,6 +31,10 @@
 #notifySwitch:focus-visible+.notify-toggle{outline:2px solid var(--lime);outline-offset:2px}
 .notify-block>.settings-copy{margin-top:8px}
 
+.quote-block{padding:26px 4px 14px;text-align:center}
+.quote-text{font:800 24px/1.25 "Georgia","Avenir Next",serif;letter-spacing:-.4px;color:var(--ink);margin:0}
+.quote-source{font:600 12.5px inherit;color:#907e8b;margin:14px 0 0}
+
 .head-actions{display:flex;align-items:center;gap:9px}
 .breaks-button{border:1px solid #ffffff2a;background:#ffffff12;color:var(--paper);font:800 10px inherit;letter-spacing:.2px;padding:6px 10px;border-radius:9px;cursor:pointer}
 .breaks-button:hover{background:#ffffff22;border-color:#ffffff48;transform:translateY(-1px)}

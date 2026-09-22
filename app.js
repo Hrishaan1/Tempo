@@ -846,6 +846,71 @@ syncSettingsUI();
 $('#syncCard').onclick=e=>{if(e.target.tagName!=='BUTTON')show('syncSheet',$('#syncCard'))};
 $('#syncButton').onclick=()=>show('syncSheet',$('#syncButton'));
 $('#resourcesButton').onclick=()=>show('resourcesSheet',$('#resourcesButton'));
+
+const QUOTES=[
+  {q:'Believe you can and you\u2019re halfway there.',a:'Theodore Roosevelt'},
+  {q:'It always seems impossible until it\u2019s done.',a:'Nelson Mandela'},
+  {q:'The secret of getting ahead is getting started.',a:'Mark Twain'},
+  {q:'Do what you can, with what you have, where you are.',a:'Theodore Roosevelt'},
+  {q:'Small steps every day add up to big results.',a:''},
+  {q:'You don\u2019t have to be great to start, but you have to start to be great.',a:'Zig Ziglar'},
+  {q:'The only way to do great work is to love what you do.',a:'Steve Jobs'},
+  {q:'Don\u2019t watch the clock; do what it does. Keep going.',a:'Sam Levenson'},
+  {q:'A year from now you may wish you had started today.',a:'Karen Lamb'},
+  {q:'Success is the sum of small efforts, repeated day in and day out.',a:'Robert Collier'},
+  {q:'You are braver than you believe, stronger than you seem, and smarter than you think.',a:'A. A. Milne'},
+  {q:'The best time to plant a tree was 20 years ago. The second best time is now.',a:'Chinese proverb'},
+  {q:'Fall seven times, stand up eight.',a:'Japanese proverb'},
+  {q:'Great things are done by a series of small things brought together.',a:'Vincent van Gogh'},
+  {q:'Done is better than perfect.',a:''},
+  {q:'One day or day one. You decide.',a:''},
+  {q:'Hard things take time to do wrong. Easy things are fast to do right.',a:''},
+  {q:'Energy and persistence conquer all things.',a:'Benjamin Franklin'},
+  {q:'Discipline is choosing between what you want now and what you want most.',a:'Abraham Lincoln'},
+  {q:'Push yourself, because no one else is going to do it for you.',a:''},
+  {q:'The expert in anything was once a beginner.',a:'Helen Hayes'},
+  {q:'You do not have to be perfect. You just have to start.',a:''},
+  {q:'Little by little, one travels far.',a:'J. R. R. Tolkien'},
+  {q:'Well begun is half done.',a:'Aristotle'},
+  {q:'The greatest glory in living lies not in never falling, but in rising every time we fall.',a:'Nelson Mandela'},
+  {q:'What you get by achieving your goals is not as important as what you become by achieving your goals.',a:'Zig Ziglar'},
+  {q:'Nothing can be done without hope and confidence.',a:'Helen Keller'},
+  {q:'Start where you are. Use what you have. Do what you can.',a:'Arthur Ashe'},
+  {q:'Action is the foundational key to all success.',a:'Pablo Picasso'},
+  {q:'The future belongs to those who believe in the beauty of their dreams.',a:'Eleanor Roosevelt'},
+  {q:'Do something today that your future self will thank you for.',a:''},
+  {q:'Motivation gets you going, but discipline keeps you growing.',a:'John C. Maxwell'},
+  {q:'It\u2019s not about having time. It\u2019s about making time.',a:''},
+  {q:'The harder you work for something, the greater you\u2019ll feel when you achieve it.',a:''},
+  {q:'Amateurs sit and wait for inspiration. The rest of us just get up and go to work.',a:'Stephen King'},
+  {q:'Fortune favors the bold.',a:''},
+  {q:'Little progress each day adds up to big results.',a:''},
+  {q:'You can\u2019t go back and change the beginning, but you can start where you are and change the ending.',a:'C. S. Lewis'},
+  {q:'Never let the fear of striking out keep you from playing the game.',a:'Babe Ruth'},
+  {q:'Make each day your masterpiece.',a:'John Wooden'},
+  {q:'Wherever you go, go with all your heart.',a:'Confucius'},
+  {q:'Doubt kills more dreams than failure ever will.',a:'Suzy Kassem'},
+  {q:'If you get tired, learn to rest, not to quit.',a:'Banksy'},
+  {q:'Big things come to those who keep their heads down and work.',a:''},
+  {q:'One hour of focused work beats eight hours of distraction.',a:''},
+  {q:'Success doesn\u2019t come from what you do occasionally, but what you do consistently.',a:'Marie Forleo'},
+  {q:'Your future is created by what you do today, not tomorrow.',a:'Robert Kiyosaki'},
+  {q:'The journey of a thousand miles begins with a single step.',a:'Lao Tzu'},
+  {q:'You have within you right now, everything you need to deal with whatever the world can throw at you.',a:'Brian Tracy'},
+  {q:'Genius is 1% inspiration and 99% perspiration.',a:'Thomas Edison'}
+];
+let lastQuote=-1;
+$('#littlePushButton').onclick=()=>{
+  const n=QUOTES.length;
+  let i=Math.floor(Math.random()*n);
+  if(n>1&&i===lastQuote)i=(i+1)%n;
+  lastQuote=i;
+  const item=QUOTES[i];
+  $('#quoteText').textContent=item.q;
+  $('#quoteSource').textContent=item.a;
+  $('#quoteSource').hidden=!item.a;
+  show('quotesSheet',$('#littlePushButton'));
+};
 $('#syncMessage').textContent='Offline mode \u2014 Tempo is saved in this browser on this device. Add Firebase configuration to enable cross-device sync.';
 $('#exportButton').onclick=exportData;
 $('#settingsExport').onclick=exportData;
