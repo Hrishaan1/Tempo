@@ -406,10 +406,26 @@ function renderTimeline(){
     b.onclick=()=>openDetail({...e,occurrenceDate:state.selectedDate});
     box.append(b);
   });
+  updateNowLine();
+}
+
+function updateNowLine(){
+  const START=frameStart(),END=frameEnd();
   const now=new Date(),n=now.getHours()*60+now.getMinutes();
   const yes=state.selectedDate===todayKey()&&n>=START&&n<=END;
   $('#nowLine').hidden=!yes;
   if(yes){$('#nowLine').style.top=`${(n-START)/(END-START)*100}%`;$('#nowLine span').textContent=minsLabel(n)}
+}
+
+function startNowTicker(){
+  const tick=()=>{
+    updateNowLine();
+    const now=new Date();
+    const delay=60000-(now.getSeconds()*1000+now.getMilliseconds());
+    setTimeout(tick,Math.max(1000,delay));
+  };
+  tick();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateNowLine()});
 }
 
 function renderStats(){
@@ -942,5 +958,6 @@ if(window.TempoNotifications)window.TempoNotifications.init();
   $('#greeting').innerHTML=`${a}<br><em>${b}</em>`;
 })();
 render();
+startNowTicker();
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register(window.TEMPO_FIREBASE_CONFIG?'./firebase-messaging-sw.js':'./service-worker.js').catch(()=>{}));
 })();
