@@ -1,8 +1,10 @@
 /* Tempo reminder sender — scheduled Firebase Function that pushes due reminders via FCM.
    Deploy: npm install (in functions/) then `firebase deploy --only functions`.
    Requires the Blaze (pay-as-you-go) plan for pubsub.schedule triggers. */
+const crypto = require('crypto');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const calendar = require('./calendar');
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -120,6 +122,110 @@ async function processUser(u, now) {
 exports.sendReminders = functions.pubsub.schedule('every 5 minutes').timeZone('UTC').onRun(async () => {
   await sendDue();
   return null;
+});
+
+/* ---------------------------------------------------------------------------
+   Apple Calendar subscription feed
+   ---------------------------------------------------------------------------
+   One-way sync: Tempo → Apple Calendar. A per-user bearer token maps (via a
+   SHA-256 hash index) to a uid; the HTTPS feed regenerates an iCalendar document
+   from that user's current schedule on every request. The plaintext token is
+   only ever returned once, by createAppleCalendarToken. */
+
+const SUBSCRIPTIONS = 'calendarSubscriptions';
+
+/* Best-effort, per-instance throttle so a leaked or scraped link can't be
+   hammered. Real limits come from Cloud Functions' own quotas; this just
+   softens abusive bursts. IPs are hashed and never logged. */
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_MAX = 120;
+const rateBuckets = new Map();
+
+function rateLimited(req, nowMs) {
+  const raw = String((req.headers && req.headers['x-forwarded-for']) || req.ip || 'unknown').split(',')[0].trim();
+  const key = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16);
+  const recent = (rateBuckets.get(key) || []).filter((t) => nowMs - t < RATE_WINDOW_MS);
+  recent.push(nowMs);
+  rateBuckets.set(key, recent);
+  if (rateBuckets.size > 5000) rateBuckets.clear();
+  return recent.length > RATE_MAX;
+}
+
+function requireUid(context) {
+  const uid = context && context.auth && context.auth.uid;
+  if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Sign in to use Apple Calendar.');
+  return uid;
+}
+
+/* Generate (or replace) this user's subscription token. Returns the plaintext
+   token exactly once; only its hash is persisted. */
+exports.createAppleCalendarToken = functions.https.onCall(async (data, context) => {
+  const uid = requireUid(context);
+  const token = calendar.generateToken();
+  const hash = calendar.hashToken(token);
+  const userRef = db.collection('users').doc(uid).collection('integrations').doc('appleCalendar');
+  const existing = await userRef.get();
+  const previousHash = existing.exists ? existing.data().tokenHash : null;
+
+  const batch = db.batch();
+  if (previousHash && previousHash !== hash) {
+    batch.delete(db.collection(SUBSCRIPTIONS).doc(previousHash));
+  }
+  const createdAt = admin.firestore.FieldValue.serverTimestamp();
+  batch.set(db.collection(SUBSCRIPTIONS).doc(hash), { uid, active: true, createdAt });
+  batch.set(userRef, { active: true, tokenHash: hash, createdAt });
+  await batch.commit();
+
+  return { token };
+});
+
+/* Revoke this user's subscription and delete the lookup index. */
+exports.revokeAppleCalendarToken = functions.https.onCall(async (data, context) => {
+  const uid = requireUid(context);
+  const userRef = db.collection('users').doc(uid).collection('integrations').doc('appleCalendar');
+  const existing = await userRef.get();
+  const hash = existing.exists ? existing.data().tokenHash : null;
+
+  const batch = db.batch();
+  if (hash) batch.delete(db.collection(SUBSCRIPTIONS).doc(hash));
+  batch.delete(userRef);
+  await batch.commit();
+
+  return { ok: true };
+});
+
+/* The subscription endpoint Apple Calendar polls. The token is the credential. */
+exports.appleCalendarFeed = functions.https.onRequest(async (req, res) => {
+  if (rateLimited(req, Date.now())) {
+    res.set('Retry-After', '60').status(429).send('Too many requests');
+    return;
+  }
+
+  let result;
+  try {
+    result = await calendar.handleFeedRequest({
+      method: req.method,
+      token: req.query && req.query.token,
+      ifNoneMatch: req.headers && req.headers['if-none-match'],
+      lookupSubscription: async (hash) => {
+        const snap = await db.collection(SUBSCRIPTIONS).doc(hash).get();
+        const data = snap.exists ? snap.data() : null;
+        return data && data.active === true && typeof data.uid === 'string' ? { uid: data.uid } : null;
+      },
+      getSchedule: async (uid) => {
+        const snap = await db.collection('users').doc(uid).collection('schedule').doc('main').get();
+        return snap.exists ? snap.data() : null;
+      },
+      now: new Date(),
+    });
+  } catch (err) {
+    /* Never echo the token or any user data into logs. */
+    console.error('Tempo calendar feed error:', (err && err.message) || err);
+    result = { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: 'Unable to build calendar' };
+  }
+
+  Object.keys(result.headers).forEach((key) => res.set(key, result.headers[key]));
+  res.status(result.status).send(result.body);
 });
 
 /* Callable helper to send a test push from the web app (settings > Reminders). */

@@ -4,13 +4,17 @@
   "private": true,
   "description": "Sends Tempo reminder pushes to signed-in devices via Cloud Messaging.",
   "main": "index.js",
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "scripts": {
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only functions",
+    "test": "node --test"
   },
   "dependencies": {
     "firebase-admin": "^12.1.0",
-    "firebase-functions": "^5.0.0"
+    "firebase-functions": "^5.0.0",
+    "ical-generator": "^10.2.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^3.1.0"

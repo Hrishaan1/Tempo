@@ -942,7 +942,7 @@ $('#clearButton').onclick=()=>{
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 
-window.TempoApp={validEvent:validEvent,validTodo:validTodo,validAllDay:validAllDay,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setAllDay:function(allDay){state.allDay=allDay},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,giveMe15:giveMe15,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
+window.TempoApp={validEvent:validEvent,validTodo:validTodo,validAllDay:validAllDay,show:show,getState:()=>state,setEvents:function(events){state.events=events},setTodos:function(todos){state.todos=todos},setAllDay:function(allDay){state.allDay=allDay},setSelectedDate:function(d){state.selectedDate=d},setSettings:function(settings){const r=settings||{},s=state.settings||{};state.settings={breakLength:Number.isInteger(r.breakLength)&&r.breakLength>=0?r.breakLength:s.breakLength??DEF_BREAK,frameStart:Number.isInteger(r.frameStart)&&r.frameStart>=0&&r.frameStart<1440?r.frameStart:s.frameStart??DEF_START,frameEnd:Number.isInteger(r.frameEnd)&&r.frameEnd>r.frameStart&&r.frameEnd<=1440?r.frameEnd:s.frameEnd??DEF_END}},save:function(toCloud){save(toCloud)},render:render,giveMe15:giveMe15,toast:toast,close:close,todayKey:todayKey,scheduleTodo:scheduleTodo,renderTodos:renderTodos,refreshGreeting:renderDateLabel};
 
 if(window.TempoFirebase){
   window.TempoFirebase.init();
@@ -952,6 +952,7 @@ if(window.TempoFirebase){
   if(syncMsg)syncMsg.textContent='Offline mode \u2014 Tempo is saved in this browser on this device. Sign in with Google to sync across devices.';
 }
 if(window.TempoNotifications)window.TempoNotifications.init();
+if(window.TempoCalendar)window.TempoCalendar.init();
 
 (function shuffleGreeting(){
   const [a,b]=GREETINGS[Math.floor(Math.random()*GREETINGS.length)];

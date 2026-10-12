@@ -80,6 +80,64 @@ The offline path covers Chromium. To get the OS to deliver the nudge on every de
 
 Files: `notifications.js` (client engine + token management), `firebase-messaging-sw.js` (push + offline-scheduled service worker), `functions/index.js` (server sender). The existing `firestore.rules` already permits each user to read/write these new paths.
 
+## Apple Calendar feed (one-way)
+
+Tempo can publish a private iCalendar feed that Apple Calendar subscribes to, so
+time blocks and all-day notes stay in sync **from Tempo → Apple Calendar**
+without manual export.
+
+How it works:
+
+- Open **Settings → Apple Calendar → Create subscription link** (Google sign-in
+  required, since the feed is generated server-side from your Firestore
+  schedule).
+- Tempo generates a high-entropy, per-user bearer token. Only its SHA-256 hash
+  is stored (in `calendarSubscriptions/{hash}` and a private marker under
+  `users/{uid}/integrations/appleCalendar`); the plaintext link is shown once and
+  cached only on that device.
+- Copy the link into **Calendar → File → New Calendar Subscription…** (macOS) or
+  **Settings → Calendar → Accounts → Add Account → Other → Add Subscribed
+  Calendar** (iOS/iPadOS).
+- **Revoke** deletes the lookup record; the old URL immediately returns 404.
+  Generate a fresh link at any time.
+
+The feed is regenerated on every request from the current schedule:
+
+- `functions/calendar.js` — pure feed logic (recurrence expansion, floating
+  local times, escaping, VEVENT/UID generation).
+- `functions/index.js` — `createAppleCalendarToken` / `revokeAppleCalendarToken`
+  callables and the `appleCalendarFeed` HTTPS endpoint.
+- `calendar.js` — the Settings sheet in the web app.
+
+Notes:
+
+- Recurring blocks are expanded into individual occurrences with **stable,
+  per-date UIDs** (a rolling ~1-month look-back / ~1-year look-ahead window,
+  capped at 8000 events). Edits keep the UID and update details; deletions
+  simply disappear on the next refresh.
+- Times are emitted as **floating** local times because the schedule stores
+  local wall-clock minutes with no IANA zone; this preserves the intended local
+  time across daylight-saving changes. All-day items use `VALUE=DATE`.
+- Apple Calendar chooses its own refresh cadence (the feed requests ~15 min via
+  `X-PUBLISHED-TTL`), so changes are not instant.
+
+Deploy the backend (no new environment variables — the functions reuse the
+project's default service account and require the Blaze plan like the reminders
+function):
+
+```
+cd functions
+npm install
+firebase deploy --only functions
+```
+
+The feed URL is
+`https://us-central1-<projectId>.cloudfunctions.net/appleCalendarFeed?token=…`.
+If you deploy the functions to a different region, set
+`window.TEMPO_FUNCTIONS_REGION` before `calendar.js` loads. `firestore.rules` is
+unchanged: the `calendarSubscriptions` index is only ever touched by the Admin
+SDK, and each user can only read/write their own `users/{uid}/**` data.
+
 ## How data flows
 
 - **Events** are time blocks with a color, repeat rule, and optional per-date overrides/exclusions.
