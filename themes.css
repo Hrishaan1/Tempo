@@ -1,0 +1,148 @@
+/* ===== Tempo themes =====
+   Palettes swap the shell, accent and category colors. Category colors can be
+   overridden per-block by the Theme settings sheet (inline custom properties). */
+
+:root{
+  --page:#190e20;
+  --glow1:#51345f;
+  --glow2:#324d54;
+  --cat-lime:var(--lime);
+  /* Derived from each theme's base hue so every surface, line, and neutral
+     tints to the active palette automatically. */
+  --plum3:color-mix(in srgb,var(--plum) 93%,var(--paper) 7%);
+  --surf:var(--paper);
+  --surf-2:color-mix(in srgb,var(--paper) 96%,var(--plum) 4%);
+  --surf-3:color-mix(in srgb,var(--paper) 91%,var(--plum) 9%);
+  --line:color-mix(in srgb,var(--paper) 86%,var(--plum) 14%);
+  --line-2:color-mix(in srgb,var(--paper) 89%,var(--plum) 11%);
+  --line-3:color-mix(in srgb,var(--paper) 82%,var(--plum) 18%);
+  --muted-2:color-mix(in srgb,var(--plum) 53%,var(--paper) 47%);
+  --muted-3:color-mix(in srgb,var(--plum) 33%,var(--paper) 67%);
+  --accent-2:color-mix(in srgb,var(--lilac) 58%,var(--plum) 42%);
+  --accent-2-deep:color-mix(in srgb,var(--lilac) 27%,var(--plum) 73%);
+  --accent-2-bright:color-mix(in srgb,var(--lilac) 85%,var(--plum) 15%);
+  --accent-2-soft:color-mix(in srgb,var(--lilac) 22%,var(--paper) 78%);
+  --accent-glow:color-mix(in srgb,var(--lime) 17%,transparent);
+  --accent-soft:color-mix(in srgb,var(--lime) 13%,transparent);
+  --accent-ring:color-mix(in srgb,var(--lime) 40%,transparent);
+  --accent-tint:color-mix(in srgb,var(--lime) 70%,var(--paper) 30%);
+  --ink-03:color-mix(in srgb,var(--ink) 4%,transparent);
+  --ink-10:color-mix(in srgb,var(--ink) 12%,transparent);
+  --ink-35:color-mix(in srgb,var(--ink) 35%,transparent);
+}
+
+body{background:var(--page)}
+.stage{background:radial-gradient(circle at 70% 10%,var(--glow1) 0,transparent 30%),radial-gradient(circle at 10% 85%,var(--glow2) 0,transparent 32%),var(--page)}
+
+/* The lime category can be recolored independently of the accent. */
+.event.lime{background:var(--cat-lime)}
+.chip.lime{background:var(--cat-lime)}
+.detail-color.lime{background:var(--cat-lime)}
+.tchip.lime{background:var(--cat-lime)}
+.todo-dot.lime{background:var(--cat-lime)}
+.tm-dot.lime{background:var(--cat-lime)}
+#todoForm[data-type="lime"] .todo-field::before{background:var(--cat-lime)}
+
+:root[data-theme="midnight"]{
+  --page:#0a1020;
+  --glow1:#1d3f74;
+  --glow2:#123842;
+  --plum:#131d33;
+  --plum2:#1e2b4a;
+  --ink:#131a2b;
+  --paper:#f4f7ff;
+  --cream:#e6ecf7;
+  --muted:#7d879e;
+  --lime:#6fe3ff;
+  --peach:#ffb38a;
+  --lilac:#b9a7ff;
+  --aqua:#7fe6d0;
+}
+
+:root[data-theme="forest"]{
+  --page:#0a150f;
+  --glow1:#1f4a2f;
+  --glow2:#2c4a1e;
+  --plum:#12241a;
+  --plum2:#1c3626;
+  --ink:#14241a;
+  --paper:#f5faef;
+  --cream:#e7f0dc;
+  --muted:#7f8f7a;
+  --lime:#b6f24d;
+  --peach:#ffc08a;
+  --lilac:#cbb2ff;
+  --aqua:#8fe3c0;
+}
+
+:root[data-theme="ember"]{
+  --page:#1a0f0a;
+  --glow1:#5a2a1e;
+  --glow2:#4a3316;
+  --plum:#2a1610;
+  --plum2:#3d2318;
+  --ink:#2c1a12;
+  --paper:#fff6ec;
+  --cream:#f6ead9;
+  --muted:#9a8175;
+  --lime:#ffb347;
+  --peach:#ff9d7a;
+  --lilac:#d9b0ff;
+  --aqua:#9fe3d4;
+}
+
+:root[data-theme="sakura"]{
+  --page:#1a0e18;
+  --glow1:#5c2a4a;
+  --glow2:#3a2440;
+  --plum:#2a1424;
+  --plum2:#3d1f33;
+  --ink:#2c1526;
+  --paper:#fff5fa;
+  --cream:#f7e7f0;
+  --muted:#9a7d90;
+  --lime:#ff8fc7;
+  --peach:#ffb292;
+  --lilac:#d4b0ff;
+  --aqua:#9ce9df;
+}
+
+:root[data-theme="slate"]{
+  --page:#0e1416;
+  --glow1:#274b52;
+  --glow2:#24333b;
+  --plum:#162023;
+  --plum2:#223035;
+  --ink:#1a2427;
+  --paper:#f2f7f6;
+  --cream:#e3eceb;
+  --muted:#7e8f8e;
+  --lime:#6ff0c8;
+  --peach:#ffb59a;
+  --lilac:#cdb6ff;
+  --aqua:#9ce9df;
+}
+
+/* ===== Theme settings sheet ===== */
+.theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.theme-option{display:flex;align-items:center;gap:10px;border:2px solid var(--line);border-radius:15px;background:var(--surf-2);padding:9px 10px;cursor:pointer;text-align:left;font:800 13px inherit;color:var(--ink);transition:border-color .18s ease,transform .18s ease}
+.theme-option:hover{transform:translateY(-1px)}
+.theme-option.active{border-color:var(--ink)}
+.theme-preview{position:relative;flex:0 0 auto;width:44px;height:44px;border-radius:12px;box-shadow:inset 0 0 0 1px #0000001f,inset 0 -18px 22px -18px #ffffff40}
+.theme-preview i{position:absolute;right:6px;bottom:6px;width:15px;height:15px;border-radius:50%;box-shadow:0 0 0 2px #0000001a}
+.theme-option small{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px}
+.cat-list{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.cat-editor{border:1px solid var(--line);border-radius:15px;background:var(--surf-2);padding:11px 12px}
+.cat-editor-head{display:flex;align-items:center;gap:10px}
+.cat-editor-dot{flex:0 0 auto;width:20px;height:20px;border-radius:7px;box-shadow:inset 0 0 0 1px #00000024}
+.cat-name{flex:1;min-width:0;border:0;border-bottom:2px solid var(--line-3);background:transparent;color:var(--ink);font:800 14px inherit;letter-spacing:-.01em;padding:4px 2px}
+.cat-name:focus{outline:0;border-color:var(--ink)}
+.cat-swatches{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.cat-swatch{position:relative;width:27px;height:27px;border-radius:9px;border:2px solid transparent;padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px #00000024;display:grid;place-items:center;color:var(--muted-2);font:800 15px inherit;line-height:1;background:var(--surf-3)}
+.cat-swatch.is-default{background:repeating-linear-gradient(45deg,var(--surf-3),var(--surf-3) 4px,var(--line) 4px,var(--line) 8px)}
+.cat-swatch.selected{border-color:var(--ink)}
+.cat-swatch:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.cat-swatch.cat-custom{overflow:hidden}
+.cat-swatch.cat-custom.has-color{color:transparent}
+.cat-swatch.cat-custom input{position:absolute;inset:-4px;opacity:0;cursor:pointer;border:0;padding:0}
+@media (max-width:430px){.theme-grid{grid-template-columns:1fr}}

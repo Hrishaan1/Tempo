@@ -1,5 +1,5 @@
-const CACHE = 'tempo-static-v7';
-const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './calendar.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
+const CACHE = 'tempo-static-v9';
+const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './todos.css', './themes.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './calendar.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => e.waitUntil(
   caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())

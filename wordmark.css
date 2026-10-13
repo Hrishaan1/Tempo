@@ -16,7 +16,7 @@
   opacity: .92;
   outline: 0;
 }
-.brand:focus-visible { box-shadow: 0 0 0 3px #c8ff3d66; border-radius: 9px; }
+.brand:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); border-radius: 9px; }
 .brand-mark {
   width: 24px;
   height: 24px;

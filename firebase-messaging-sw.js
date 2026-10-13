@@ -3,8 +3,8 @@ self.importScripts('./firebase-config.js');
 self.importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 self.importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
-const CACHE = 'tempo-static-v6';
-const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './calendar.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
+const CACHE = 'tempo-static-v8';
+const ASSETS = ['./', './index.html', './styles.css', './extras.css', './wordmark.css', './todos.css', './themes.css', './app.js', './fixes.js', './firebase.js', './notifications.js', './calendar.js', './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => e.waitUntil(
   caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
