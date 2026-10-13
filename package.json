@@ -1,5 +1,13 @@
 {
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
-    "firebase": "^12.18.0"
+    "firebase": "^12.18.0",
+    "firebase-admin": "^12.7.0",
+    "ical-generator": "^10.2.0"
   }
 }

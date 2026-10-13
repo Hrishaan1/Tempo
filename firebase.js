@@ -2,7 +2,7 @@
 window.TempoFirebase = (function () {
   'use strict';
 
-  let app = null, auth = null, db = null, functions = null;
+  let app = null, auth = null, db = null;
   let unsubscribe = null;
   let currentUser = null;
   let signingIn = false;
@@ -218,7 +218,6 @@ window.TempoFirebase = (function () {
       app = firebase.initializeApp(window.TEMPO_FIREBASE_CONFIG);
       auth = firebase.auth();
       db = firebase.firestore();
-      if (typeof firebase.functions === 'function') functions = firebase.functions();
       auth.onAuthStateChanged(onAuthChanged);
       updateSyncUI();
       updateSettingsSync();
@@ -236,7 +235,10 @@ window.TempoFirebase = (function () {
     loadScheduleFromCloud: loadScheduleFromCloud,
     updateSyncUI: updateSyncUI,
     updateSettingsSync: updateSettingsSync,
-    getFunctions: function () { return functions; },
+    getIdToken: function () {
+      if (!currentUser || typeof currentUser.getIdToken !== 'function') return Promise.resolve(null);
+      return currentUser.getIdToken().then(function (token) { return token; }).catch(function () { return null; });
+    },
     getUid: function () { return currentUser ? currentUser.uid : null; },
     getCurrentUserEmail: function () {
       return currentUser ? (currentUser.email || null) : null;

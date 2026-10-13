@@ -11,8 +11,8 @@ window.TempoCalendar = (function () {
   'use strict';
 
   var STORE = 'tempo.applecal.v1';
-  var FUNCTION_NAME = 'appleCalendarFeed';
-  var REGION = window.TEMPO_FUNCTIONS_REGION || 'us-central1';
+  var API_BASE = window.TEMPO_CALENDAR_API_BASE ||
+    ((typeof location !== 'undefined' && location.origin) ? location.origin : '');
 
   var uid = null;
   var configured = false;
@@ -29,10 +29,8 @@ window.TempoCalendar = (function () {
   }
 
   function feedUrl(token) {
-    var cfg = window.TEMPO_FIREBASE_CONFIG || {};
-    if (!cfg.projectId) return null;
-    return 'https://' + REGION + '-' + cfg.projectId + '.cloudfunctions.net/' +
-      FUNCTION_NAME + '?token=' + encodeURIComponent(token);
+    if (!API_BASE) return null;
+    return API_BASE + '/api/appleCalendarFeed?token=' + encodeURIComponent(token);
   }
 
   function note(msg) { var el = $('#appleCalNote'); if (el) el.textContent = msg || ''; }
@@ -44,12 +42,22 @@ window.TempoCalendar = (function () {
     });
   }
 
-  function callable(name) {
+  function apiPost(path) {
     var f = fb();
-    if (!f || typeof f.getFunctions !== 'function') return null;
-    var fn = f.getFunctions();
-    if (!fn || typeof fn.httpsCallable !== 'function') return null;
-    return fn.httpsCallable(name);
+    if (!f || typeof f.getIdToken !== 'function') return Promise.reject(new Error('Cloud sync isn’t available right now.'));
+    return f.getIdToken().then(function (token) {
+      if (!token) throw new Error('Sign in with Google to continue.');
+      return fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: '{}',
+      });
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) throw new Error((data && data.error) || ('Request failed (' + res.status + ').'));
+        return data;
+      });
+    });
   }
 
   function firestore() {
@@ -77,12 +85,10 @@ window.TempoCalendar = (function () {
   }
 
   function createToken() {
-    var create = callable('createAppleCalendarToken');
-    if (!create) { note('Cloud sync isn’t configured for this build.'); return; }
     setBusy(true); note('');
-    create().then(function (res) {
-      var token = res && res.data && res.data.token;
-      if (!token) throw new Error('missing token');
+    apiPost('/api/createAppleCalendarToken').then(function (data) {
+      var token = data && data.token;
+      if (!token) throw new Error('The server didn’t return a link.');
       setCachedToken(token);
       configured = true;
       render();
@@ -94,10 +100,8 @@ window.TempoCalendar = (function () {
 
   function revokeToken() {
     if (!window.confirm('Disable this subscription? Apple Calendar will stop updating.')) return;
-    var revoke = callable('revokeAppleCalendarToken');
-    if (!revoke) { note('Cloud sync isn’t configured for this build.'); return; }
     setBusy(true); note('');
-    revoke().then(function () {
+    apiPost('/api/revokeAppleCalendarToken').then(function () {
       setCachedToken(null);
       configured = false;
       render();

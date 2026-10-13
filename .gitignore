@@ -2,4 +2,7 @@
 node_modules
 functions/node_modules
 functions/.env
+.vercel
+.env
+.env*.local
 brief.md

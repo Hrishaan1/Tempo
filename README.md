@@ -104,10 +104,17 @@ How it works:
 The feed is regenerated on every request from the current schedule:
 
 - `functions/calendar.js` — pure feed logic (recurrence expansion, floating
-  local times, escaping, VEVENT/UID generation).
-- `functions/index.js` — `createAppleCalendarToken` / `revokeAppleCalendarToken`
-  callables and the `appleCalendarFeed` HTTPS endpoint.
-- `calendar.js` — the Settings sheet in the web app.
+  local times, escaping, VEVENT/UID generation). Shared by both backend paths.
+- `api/` — Vercel serverless routes: `createAppleCalendarToken`,
+  `revokeAppleCalendarToken`, and `appleCalendarFeed` (plus `_firebaseAdmin.js`
+  / `_http.js` helpers). These use the Firebase Admin SDK.
+- `calendar.js` — the Settings sheet in the web app, which calls `/api/…`.
+- `firebase.js` — exposes `getIdToken()` so the page can authenticate those
+  calls with the signed-in user's Firebase ID token.
+
+> The old Firebase Cloud Functions version (in `functions/index.js`) still exists
+> but is **not deployed** — it would require the Blaze plan. The Vercel routes
+> above give the same behaviour on the free Hobby plan.
 
 Notes:
 
@@ -121,22 +128,36 @@ Notes:
 - Apple Calendar chooses its own refresh cadence (the feed requests ~15 min via
   `X-PUBLISHED-TTL`), so changes are not instant.
 
-Deploy the backend (no new environment variables — the functions reuse the
-project's default service account and require the Blaze plan like the reminders
-function):
+Deploying the backend on Vercel (free, no billing account):
 
-```
-cd functions
-npm install
-firebase deploy --only functions
-```
+1. Create a Firebase **service-account key**: Firebase console → Project
+   settings → Service accounts → **Generate new private key**. This is free; it
+   just lets the API routes read/write Firestore with admin rights.
+2. Add the whole JSON (single line is fine) as a Vercel project environment
+   variable named `FIREBASE_SERVICE_ACCOUNT` — Settings → Environment Variables —
+   for Production (and Preview, if you want to test there). Do **not** commit it
+   (`.env` / `.env.* ` are gitignored).
+3. Push the repo (Vercel builds the `/api/*.js` routes and installs
+   `firebase-admin` + `ical-generator` from the root `package.json`). No
+   `vercel.json` is needed. To test locally:
+   ```
+   npm install
+   vercel env pull
+   vercel dev
+   ```
+4. On the same domain as the app, the feed URL is now
+   `https://tempo-scheduler.vercel.app/api/appleCalendarFeed?token=…`, and the
+   "Create subscription link" button hits `/api/createAppleCalendarToken` with
+   the signed-in user's ID token.
 
-The feed URL is
-`https://us-central1-<projectId>.cloudfunctions.net/appleCalendarFeed?token=…`.
-If you deploy the functions to a different region, set
-`window.TEMPO_FUNCTIONS_REGION` before `calendar.js` loads. `firestore.rules` is
-unchanged: the `calendarSubscriptions` index is only ever touched by the Admin
-SDK, and each user can only read/write their own `users/{uid}/**` data.
+Notes:
+
+- No Firestore rules change: the `calendarSubscriptions` index is only ever
+  touched by the Admin SDK, and each user can only read/write their own
+  `users/{uid}/**` data.
+- If the site is ever served from a different origin, set
+  `window.TEMPO_CALENDAR_API_BASE` to the app origin before `calendar.js`
+  loads.
 
 ## How data flows
 
